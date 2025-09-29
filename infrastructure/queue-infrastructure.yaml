@@ -1,0 +1,460 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Emergency Document Processor - Job Queue Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues: ['dev', 'staging', 'prod']
+    Description: Environment name
+
+  S3BucketName:
+    Type: String
+    Description: Name of the S3 bucket for document storage
+
+Resources:
+  # SQS Queues for Job Processing
+  DocumentProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${Environment}-emergency-docs-processing'
+      VisibilityTimeoutSeconds: 900  # 15 minutes
+      MessageRetentionPeriod: 1209600  # 14 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DocumentProcessingDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: EmergencyDocProcessor
+        - Key: Component
+          Value: JobQueue
+
+  DocumentProcessingDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${Environment}-emergency-docs-processing-dlq'
+      MessageRetentionPeriod: 1209600  # 14 days
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: EmergencyDocProcessor
+        - Key: Component
+          Value: DeadLetterQueue
+
+  ApprovalWorkflowQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${Environment}-emergency-docs-approval'
+      VisibilityTimeoutSeconds: 300  # 5 minutes
+      MessageRetentionPeriod: 1209600  # 14 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ApprovalWorkflowDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: EmergencyDocProcessor
+        - Key: Component
+          Value: ApprovalQueue
+
+  ApprovalWorkflowDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${Environment}-emergency-docs-approval-dlq'
+      MessageRetentionPeriod: 1209600  # 14 days
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: EmergencyDocProcessor
+        - Key: Component
+          Value: DeadLetterQueue
+
+  MaintenanceQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${Environment}-emergency-docs-maintenance'
+      VisibilityTimeoutSeconds: 600  # 10 minutes
+      MessageRetentionPeriod: 1209600  # 14 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt MaintenanceDLQ.Arn
+        maxReceiveCount: 2
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: EmergencyDocProcessor
+        - Key: Component
+          Value: MaintenanceQueue
+
+  MaintenanceDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${Environment}-emergency-docs-maintenance-dlq'
+      MessageRetentionPeriod: 1209600  # 14 days
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: EmergencyDocProcessor
+        - Key: Component
+          Value: DeadLetterQueue
+
+  # DynamoDB Table for Job Tracking
+  QueueJobsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-queue-jobs'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: job_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
+        - AttributeName: queue_type
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: job_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserJobsIndex
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: QueueTypeIndex
+          KeySchema:
+            - AttributeName: queue_type
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: StatusIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: EmergencyDocProcessor
+        - Key: Component
+          Value: JobTracking
+
+  # CloudWatch Dashboard for Queue Monitoring
+  QueueMonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub '${Environment}-emergency-docs-queue-monitoring'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/SQS", "NumberOfMessagesReceived", "QueueName", "${DocumentProcessingQueue.QueueName}" ],
+                  [ ".", "NumberOfMessagesSent", ".", "." ],
+                  [ ".", "ApproximateNumberOfMessages", ".", "." ],
+                  [ ".", "ApproximateNumberOfMessagesNotVisible", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Document Processing Queue Metrics",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/SQS", "NumberOfMessagesReceived", "QueueName", "${ApprovalWorkflowQueue.QueueName}" ],
+                  [ ".", "NumberOfMessagesSent", ".", "." ],
+                  [ ".", "ApproximateNumberOfMessages", ".", "." ],
+                  [ ".", "ApproximateNumberOfMessagesNotVisible", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Approval Workflow Queue Metrics",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "EmergencyDocs/JobQueue", "JobsEnqueued", "QueueType", "document_processing" ],
+                  [ ".", "JobsDequeued", ".", "." ],
+                  [ ".", "JobsCompleted", ".", "." ],
+                  [ ".", "JobsFailed", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Job Processing Metrics",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/SQS", "ApproximateNumberOfMessages", "QueueName", "${DocumentProcessingDLQ.QueueName}" ],
+                  [ ".", ".", ".", "${ApprovalWorkflowDLQ.QueueName}" ],
+                  [ ".", ".", ".", "${MaintenanceDLQ.QueueName}" ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Dead Letter Queue Messages",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "EmergencyDocs/JobQueue", "JobDuration", "QueueType", "document_processing" ],
+                  [ ".", ".", ".", "approval_workflow" ],
+                  [ ".", ".", ".", "maintenance" ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Average Job Duration",
+                "period": 300,
+                "stat": "Average"
+              }
+            }
+          ]
+        }
+
+  # CloudWatch Alarms
+  DocumentProcessingDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${Environment}-emergency-docs-processing-dlq-alarm'
+      AlarmDescription: 'Alert when messages appear in document processing DLQ'
+      MetricName: ApproximateNumberOfMessages
+      Namespace: AWS/SQS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt DocumentProcessingDLQ.QueueName
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref DLQAlarmTopic
+
+  ApprovalWorkflowDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${Environment}-emergency-docs-approval-dlq-alarm'
+      AlarmDescription: 'Alert when messages appear in approval workflow DLQ'
+      MetricName: ApproximateNumberOfMessages
+      Namespace: AWS/SQS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt ApprovalWorkflowDLQ.QueueName
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref DLQAlarmTopic
+
+  QueueBacklogAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${Environment}-emergency-docs-queue-backlog-alarm'
+      AlarmDescription: 'Alert when queue backlog becomes too large'
+      MetricName: ApproximateNumberOfMessages
+      Namespace: AWS/SQS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 100
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt DocumentProcessingQueue.QueueName
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref BacklogAlarmTopic
+
+  # SNS Topics for Alerts
+  DLQAlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${Environment}-emergency-docs-dlq-alerts'
+      DisplayName: 'Emergency Docs DLQ Alerts'
+
+  BacklogAlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${Environment}-emergency-docs-backlog-alerts'
+      DisplayName: 'Emergency Docs Queue Backlog Alerts'
+
+  # IAM Roles and Policies
+  QueueServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${Environment}-emergency-docs-queue-service-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - lambda.amazonaws.com
+                - ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: QueueServicePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:GetQueueUrl
+                  - sqs:ChangeMessageVisibility
+                Resource:
+                  - !GetAtt DocumentProcessingQueue.Arn
+                  - !GetAtt ApprovalWorkflowQueue.Arn
+                  - !GetAtt MaintenanceQueue.Arn
+                  - !GetAtt DocumentProcessingDLQ.Arn
+                  - !GetAtt ApprovalWorkflowDLQ.Arn
+                  - !GetAtt MaintenanceDLQ.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt QueueJobsTable.Arn
+                  - !Sub '${QueueJobsTable.Arn}/index/*'
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    'cloudwatch:namespace': 'EmergencyDocs/JobQueue'
+
+Outputs:
+  DocumentProcessingQueueUrl:
+    Description: 'Document Processing Queue URL'
+    Value: !Ref DocumentProcessingQueue
+    Export:
+      Name: !Sub '${Environment}-emergency-docs-processing-queue-url'
+
+  DocumentProcessingQueueArn:
+    Description: 'Document Processing Queue ARN'
+    Value: !GetAtt DocumentProcessingQueue.Arn
+    Export:
+      Name: !Sub '${Environment}-emergency-docs-processing-queue-arn'
+
+  ApprovalWorkflowQueueUrl:
+    Description: 'Approval Workflow Queue URL'
+    Value: !Ref ApprovalWorkflowQueue
+    Export:
+      Name: !Sub '${Environment}-emergency-docs-approval-queue-url'
+
+  MaintenanceQueueUrl:
+    Description: 'Maintenance Queue URL'
+    Value: !Ref MaintenanceQueue
+    Export:
+      Name: !Sub '${Environment}-emergency-docs-maintenance-queue-url'
+
+  QueueJobsTableName:
+    Description: 'Queue Jobs DynamoDB Table Name'
+    Value: !Ref QueueJobsTable
+    Export:
+      Name: !Sub '${Environment}-emergency-docs-queue-jobs-table'
+
+  QueueJobsTableArn:
+    Description: 'Queue Jobs DynamoDB Table ARN'
+    Value: !GetAtt QueueJobsTable.Arn
+    Export:
+      Name: !Sub '${Environment}-emergency-docs-queue-jobs-table-arn'
+
+  QueueServiceRoleArn:
+    Description: 'Queue Service IAM Role ARN'
+    Value: !GetAtt QueueServiceRole.Arn
+    Export:
+      Name: !Sub '${Environment}-emergency-docs-queue-service-role-arn'
+
+  DashboardUrl:
+    Description: 'CloudWatch Dashboard URL'
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${QueueMonitoringDashboard}'
+
+  DLQAlarmTopicArn:
+    Description: 'DLQ Alarm SNS Topic ARN'
+    Value: !Ref DLQAlarmTopic
+    Export:
+      Name: !Sub '${Environment}-emergency-docs-dlq-alarm-topic-arn'
+
+  BacklogAlarmTopicArn:
+    Description: 'Backlog Alarm SNS Topic ARN'
+    Value: !Ref BacklogAlarmTopic
+    Export:
+      Name: !Sub '${Environment}-emergency-docs-backlog-alarm-topic-arn'

@@ -1,0 +1,59 @@
+# AWS Amplify Build Specification
+# This file is automatically detected by AWS Amplify for build configuration
+
+version: 1
+applications:
+  - appRoot: frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - echo "Installing frontend dependencies..."
+            - npm ci
+            - echo "Creating production environment file..."
+            - cp .env.production.example .env.production
+            - echo "Frontend dependencies installed successfully"
+        build:
+          commands:
+            - echo "Building frontend application..."
+            - npm run build
+            - echo "Frontend build completed successfully"
+        postBuild:
+          commands:
+            - echo "Frontend post-build operations..."
+            - ls -la build/
+            - echo "Frontend post-build completed"
+      artifacts:
+        baseDirectory: build
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+      customHeaders:
+        - pattern: '**/*'
+          headers:
+            - key: 'X-Frame-Options'
+              value: 'DENY'
+            - key: 'X-Content-Type-Options'
+              value: 'nosniff'
+            - key: 'Referrer-Policy'
+              value: 'strict-origin-when-cross-origin'
+            - key: 'Permissions-Policy'
+              value: 'camera=(), microphone=(), geolocation=()'
+test:
+  phases:
+    preTest:
+      commands:
+        - echo "Starting frontend tests..."
+    test:
+      commands:
+        - echo "Running frontend test suite..."
+        - cd frontend && npm test -- --coverage --watchAll=false
+    postTest:
+      commands:
+        - echo "Frontend tests completed"
+  artifacts:
+    baseDirectory: frontend/coverage
+    files:
+      - '**/*'

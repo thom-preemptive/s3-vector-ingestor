@@ -1,0 +1,515 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Emergency Document Processor - Serverless Orchestration Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues: ['dev', 'staging', 'prod']
+    Description: 'Environment name'
+  
+  ProjectName:
+    Type: String
+    Default: 'emergency-docs'
+    Description: 'Project name for resource naming'
+  
+  S3BucketName:
+    Type: String
+    Default: 'emergency-docs-bucket-us-east-1'
+    Description: 'S3 bucket for document storage'
+  
+  CognitoUserPoolId:
+    Type: String
+    Description: 'Cognito User Pool ID for authentication'
+  
+  CognitoUserPoolClientId:
+    Type: String
+    Description: 'Cognito User Pool Client ID'
+
+Resources:
+  # ================================
+  # EventBridge Custom Event Bus
+  # ================================
+  EmergencyDocsEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub '${ProjectName}-events-${Environment}'
+      Description: 'Event bus for emergency document processor orchestration'
+      Tags:
+        - Key: 'Project'
+          Value: !Ref ProjectName
+        - Key: 'Environment'
+          Value: !Ref Environment
+
+  # ================================
+  # IAM Roles for Lambda Functions
+  # ================================
+  DocumentOrchestratorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-orchestrator-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DocumentOrchestratorPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - events:PutEvents
+                Resource: !GetAtt EmergencyDocsEventBus.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/document-jobs'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/document-approvals'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/user-tracking'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:HeadObject
+                Resource: !Sub 'arn:aws:s3:::${S3BucketName}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub 'arn:aws:s3:::${S3BucketName}'
+
+  DocumentProcessorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-processor-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DocumentProcessorPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - events:PutEvents
+                Resource: !GetAtt EmergencyDocsEventBus.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:HeadObject
+                Resource: !Sub 'arn:aws:s3:::${S3BucketName}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub 'arn:aws:s3:::${S3BucketName}'
+              - Effect: Allow
+                Action:
+                  - textract:DetectDocumentText
+                  - textract:AnalyzeDocument
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v1'
+
+  # ================================
+  # Lambda Functions
+  # ================================
+  DocumentOrchestratorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-orchestrator-${Environment}'
+      Description: 'Document processing orchestrator function'
+      Runtime: python3.9
+      Handler: document_orchestrator.lambda_handler
+      Role: !GetAtt DocumentOrchestratorRole.Arn
+      Code:
+        ZipFile: |
+          # Placeholder code - replace with actual deployment package
+          import json
+          def lambda_handler(event, context):
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Orchestrator function deployed - update with actual code')
+              }
+      Environment:
+        Variables:
+          DOCUMENT_JOBS_TABLE: 'document-jobs'
+          APPROVAL_TABLE: 'document-approvals'
+          USER_TRACKING_TABLE: 'user-tracking'
+          S3_BUCKET: !Ref S3BucketName
+          EVENT_BUS_NAME: !Ref EmergencyDocsEventBus
+          ENVIRONMENT: !Ref Environment
+      Timeout: 300
+      MemorySize: 512
+      Tags:
+        - Key: 'Project'
+          Value: !Ref ProjectName
+        - Key: 'Environment'
+          Value: !Ref Environment
+
+  DocumentProcessorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-processor-${Environment}'
+      Description: 'Document processing worker function'
+      Runtime: python3.9
+      Handler: document_processor.lambda_handler
+      Role: !GetAtt DocumentProcessorRole.Arn
+      Code:
+        ZipFile: |
+          # Placeholder code - replace with actual deployment package
+          import json
+          def lambda_handler(event, context):
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Processor function deployed - update with actual code')
+              }
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref S3BucketName
+          DOCUMENT_JOBS_TABLE: 'document-jobs'
+          EVENT_BUS_NAME: !Ref EmergencyDocsEventBus
+          ENVIRONMENT: !Ref Environment
+      Timeout: 900  # 15 minutes for document processing
+      MemorySize: 1024
+      Tags:
+        - Key: 'Project'
+          Value: !Ref ProjectName
+        - Key: 'Environment'
+          Value: !Ref Environment
+
+  # ================================
+  # EventBridge Rules
+  # ================================
+  DocumentProcessingRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-process-documents-${Environment}'
+      Description: 'Route document processing events to processor function'
+      EventBusName: !Ref EmergencyDocsEventBus
+      EventPattern:
+        source:
+          - 'emergency.docs'
+        detail-type:
+          - 'Process Document Task'
+          - 'Start Document Processing'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt DocumentProcessorFunction.Arn
+          Id: 'DocumentProcessorTarget'
+
+  DocumentOrchestrationRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-orchestration-${Environment}'
+      Description: 'Route orchestration events to orchestrator function'
+      EventBusName: !Ref EmergencyDocsEventBus
+      EventPattern:
+        source:
+          - 'emergency.docs'
+        detail-type:
+          - 'Job Created'
+          - 'Job Status Changed'
+          - 'Approval Required'
+          - 'Document Upload Detected'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt DocumentOrchestratorFunction.Arn
+          Id: 'DocumentOrchestratorTarget'
+
+  S3EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-s3-events-${Environment}'
+      Description: 'Route S3 events to orchestrator function'
+      EventPattern:
+        source:
+          - 'aws.s3'
+        detail:
+          bucket:
+            name:
+              - !Ref S3BucketName
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt DocumentOrchestratorFunction.Arn
+          Id: 'S3EventTarget'
+
+  DynamoDBEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-dynamodb-events-${Environment}'
+      Description: 'Route DynamoDB events to orchestrator function'
+      EventPattern:
+        source:
+          - 'aws.dynamodb'
+        detail:
+          tableName:
+            - 'document-jobs'
+            - 'document-approvals'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt DocumentOrchestratorFunction.Arn
+          Id: 'DynamoDBEventTarget'
+
+  ScheduledCleanupRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-cleanup-${Environment}'
+      Description: 'Scheduled cleanup and maintenance tasks'
+      ScheduleExpression: 'cron(0 2 * * ? *)'  # Daily at 2 AM UTC
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt DocumentOrchestratorFunction.Arn
+          Id: 'CleanupTarget'
+          Input: !Sub |
+            {
+              "source": "aws.events",
+              "detail-type": "Scheduled Event",
+              "detail": {
+                "schedule_type": "cleanup"
+              }
+            }
+
+  ScheduledMonitoringRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-monitoring-${Environment}'
+      Description: 'Scheduled monitoring and health checks'
+      ScheduleExpression: 'rate(15 minutes)'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt DocumentOrchestratorFunction.Arn
+          Id: 'MonitoringTarget'
+          Input: !Sub |
+            {
+              "source": "aws.events",
+              "detail-type": "Scheduled Event",
+              "detail": {
+                "schedule_type": "monitoring"
+              }
+            }
+
+  # ================================
+  # Lambda Permissions for EventBridge
+  # ================================
+  DocumentProcessorEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt DocumentProcessorFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DocumentProcessingRule.Arn
+
+  DocumentOrchestratorEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt DocumentOrchestratorFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DocumentOrchestrationRule.Arn
+
+  DocumentOrchestratorS3Permission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt DocumentOrchestratorFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt S3EventRule.Arn
+
+  DocumentOrchestratorDynamoDBPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt DocumentOrchestratorFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DynamoDBEventRule.Arn
+
+  DocumentOrchestratorCleanupPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt DocumentOrchestratorFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduledCleanupRule.Arn
+
+  DocumentOrchestratorMonitoringPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt DocumentOrchestratorFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduledMonitoringRule.Arn
+
+  # ================================
+  # API Gateway for Lambda Integration
+  # ================================
+  EmergencyDocsAPI:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${ProjectName}-api-${Environment}'
+      Description: 'Emergency Document Processor API Gateway'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Tags:
+        - Key: 'Project'
+          Value: !Ref ProjectName
+        - Key: 'Environment'
+          Value: !Ref Environment
+
+  # Orchestrator API Resource
+  OrchestratorResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref EmergencyDocsAPI
+      ParentId: !GetAtt EmergencyDocsAPI.RootResourceId
+      PathPart: 'orchestrate'
+
+  OrchestratorMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref EmergencyDocsAPI
+      ResourceId: !Ref OrchestratorResource
+      HttpMethod: POST
+      AuthorizationType: AWS_IAM
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DocumentOrchestratorFunction.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: Empty
+        - StatusCode: 400
+          ResponseModels:
+            application/json: Empty
+        - StatusCode: 500
+          ResponseModels:
+            application/json: Empty
+
+  # API Gateway Lambda Permission
+  APIGatewayOrchestratorPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt DocumentOrchestratorFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${EmergencyDocsAPI}/*/POST/orchestrate'
+
+  # API Gateway Deployment
+  APIDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - OrchestratorMethod
+    Properties:
+      RestApiId: !Ref EmergencyDocsAPI
+      StageName: !Ref Environment
+      StageDescription: !Sub '${Environment} stage for Emergency Document Processor API'
+
+  # ================================
+  # CloudWatch Log Groups
+  # ================================
+  OrchestratorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-orchestrator-${Environment}'
+      RetentionInDays: 30
+
+  ProcessorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-processor-${Environment}'
+      RetentionInDays: 30
+
+  APIGatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apigateway/${ProjectName}-api-${Environment}'
+      RetentionInDays: 30
+
+  # ================================
+  # CloudWatch Alarms
+  # ================================
+  OrchestratorErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-orchestrator-errors-${Environment}'
+      AlarmDescription: 'High error rate in document orchestrator'
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref DocumentOrchestratorFunction
+      TreatMissingData: notBreaching
+
+  ProcessorErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-processor-errors-${Environment}'
+      AlarmDescription: 'High error rate in document processor'
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref DocumentProcessorFunction
+      TreatMissingData: notBreaching
+
+Outputs:
+  EventBusArn:
+    Description: 'EventBridge Event Bus ARN'
+    Value: !GetAtt EmergencyDocsEventBus.Arn
+    Export:
+      Name: !Sub '${ProjectName}-event-bus-arn-${Environment}'
+
+  OrchestratorFunctionArn:
+    Description: 'Document Orchestrator Lambda Function ARN'
+    Value: !GetAtt DocumentOrchestratorFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-orchestrator-arn-${Environment}'
+
+  ProcessorFunctionArn:
+    Description: 'Document Processor Lambda Function ARN'
+    Value: !GetAtt DocumentProcessorFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-processor-arn-${Environment}'
+
+  APIGatewayURL:
+    Description: 'API Gateway URL'
+    Value: !Sub 'https://${EmergencyDocsAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${ProjectName}-api-url-${Environment}'
+
+  APIGatewayId:
+    Description: 'API Gateway ID'
+    Value: !Ref EmergencyDocsAPI
+    Export:
+      Name: !Sub '${ProjectName}-api-id-${Environment}'
