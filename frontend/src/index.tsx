@@ -6,18 +6,20 @@ import App from './App';
 // Configure Amplify (you'll need to add your actual config)
 const amplifyConfig = {
   Auth: {
-    region: process.env.REACT_APP_AWS_REGION || 'us-east-1',
-    userPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID || '',
-    userPoolWebClientId: process.env.REACT_APP_COGNITO_CLIENT_ID || '',
+    Cognito: {
+      region: process.env.REACT_APP_AWS_REGION || 'us-east-1',
+      userPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID || '',
+      userPoolClientId: process.env.REACT_APP_COGNITO_CLIENT_ID || '',
+    }
   },
   API: {
-    endpoints: [
-      {
-        name: 'api',
+    REST: {
+      'api': {
         endpoint: process.env.REACT_APP_API_URL || 'http://localhost:8000',
-      },
-    ],
-  },
+        region: process.env.REACT_APP_AWS_REGION || 'us-east-1'
+      }
+    }
+  }
 };
 
 Amplify.configure(amplifyConfig);

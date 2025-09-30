@@ -27,7 +27,7 @@ const drawerWidth = 240;
 
 interface LayoutProps {
   user: any;
-  signOut: () => void;
+  signOut?: () => void;
   children: React.ReactNode;
 }
 
@@ -96,7 +96,7 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
           <Typography variant="body2" sx={{ mr: 2 }}>
             {user?.attributes?.email}
           </Typography>
-          <Button color="inherit" onClick={signOut}>
+          <Button color="inherit" onClick={signOut || (() => {})}>
             Sign Out
           </Button>
         </Toolbar>

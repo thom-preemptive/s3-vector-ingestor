@@ -5,7 +5,6 @@ frontend:
       commands:
         - cd frontend
         - npm ci
-        - cp .env.production.example .env.production || echo "No .env.production.example found"
     build:
       commands:
         - cd frontend
