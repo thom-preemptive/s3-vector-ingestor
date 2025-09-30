@@ -24,8 +24,7 @@ const theme = createTheme({
   },
 });
 
-// Simple approach: modify the form fields to include both username and email
-// but provide clear instructions to users
+// Simplified form fields - now truly email-only since Cognito uses email as username
 const formFields = {
   signIn: {
     username: {
@@ -35,15 +34,8 @@ const formFields = {
   },
   signUp: {
     username: {
-      placeholder: 'Create a username (letters and numbers only)',
-      label: 'Username',
-      order: 1,
-    },
-    email: {
       placeholder: 'Enter your email address',
       label: 'Email Address',
-      isRequired: true,
-      order: 2,
     }
   }
 };
@@ -81,20 +73,6 @@ const authenticatorStyles = `
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
     padding: 2rem !important;
     margin: 0 !important;
-  }
-  
-  /* Add helper text for the signup form */
-  .amplify-tabs__panel[data-value="sign-up"]::before {
-    content: "📝 To create an account: choose a username (letters/numbers only), then add your email address.";
-    display: block;
-    background-color: #e8f4fd;
-    border: 1px solid #6a37b0;
-    border-radius: 4px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
-    color: #333;
-    text-align: center;
   }
   
   /* Style for UNSELECTED tabs - 30% lighter than #6a37b0 */
