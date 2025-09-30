@@ -23,7 +23,7 @@ const theme = createTheme({
   },
 });
 
-// Custom form fields configuration to change "Username" to "Email Address"
+// Custom form fields configuration for email alias setup
 const formFields = {
   signIn: {
     username: {
@@ -33,8 +33,21 @@ const formFields = {
   },
   signUp: {
     username: {
+      placeholder: 'Enter a username (e.g., john_doe)',
+      label: 'Username',
+      order: 1,
+    },
+    email: {
       placeholder: 'Enter your email address',
       label: 'Email Address',
+      isRequired: true,
+      order: 2,
+    },
+    name: {
+      placeholder: 'Enter your full name',
+      label: 'Full Name',
+      isRequired: true,
+      order: 3,
     }
   }
 };
