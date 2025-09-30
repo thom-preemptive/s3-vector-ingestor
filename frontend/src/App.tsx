@@ -79,13 +79,20 @@ const authenticatorStyles = `
   .amplify-tabs__item {
     color: #a988cc !important; /* 30% lighter than #6a37b0 */
     transition: color 0.2s ease !important;
+    border-bottom: 5px solid transparent !important;
   }
   
   /* Style for ACTIVE/SELECTED tabs */
   .amplify-tabs__item[data-state="active"] {
     color: #6a37b0 !important;
+    border-bottom: 5px solid #6a37b0 !important;
     border-bottom-color: #6a37b0 !important;
     font-weight: 600 !important;
+  }
+  
+  /* Ensure tab underline styling takes priority */
+  .amplify-tabs__item[data-state="active"]::after {
+    border-bottom: 5px solid #6a37b0 !important;
   }
   
   /* Hover state for tabs */

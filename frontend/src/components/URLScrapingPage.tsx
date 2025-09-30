@@ -138,11 +138,11 @@ const URLScrapingPage: React.FC<URLScrapingPageProps> = () => {
         />
       </Paper>
 
-      <Paper sx={{ p: 3, mb: 3, backgroundColor: 'info.light', color: 'info.contrastText' }}>
-        <Typography variant="h6" gutterBottom>
+      <Paper sx={{ p: 3, mb: 3, backgroundColor: '#EFE6F7', color: 'black' }}>
+        <Typography variant="h6" gutterBottom sx={{ color: 'black' }}>
           How URL Scraping Works
         </Typography>
-        <Typography variant="body2" component="div">
+        <Typography variant="body2" component="div" sx={{ color: 'black' }}>
           <Box component="ul" sx={{ pl: 2, mb: 0 }}>
             <li>Each URL will be visited and its content extracted</li>
             <li>Web page content is converted to clean markdown format</li>
