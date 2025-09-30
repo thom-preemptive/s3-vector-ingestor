@@ -20,6 +20,7 @@ import {
   CloudUpload as UploadIcon,
   Assignment as JobsIcon,
   CheckCircle as ApprovalIcon,
+  ExitToApp as SignOutIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -48,13 +49,23 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
   ];
 
   const drawer = (
-    <Box>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-          agent2_ingestor
-        </Typography>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
+        {/* Eventual Logo */}
+        <img 
+          src="/eventual-logo.svg" 
+          alt="Eventual Logo" 
+          style={{ 
+            height: '50px', 
+            width: 'auto',
+            maxWidth: '180px',
+            objectFit: 'contain'
+          }} 
+        />
       </Toolbar>
-      <List>
+      
+      {/* Navigation Menu */}
+      <List sx={{ flexGrow: 1 }}>
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
@@ -67,6 +78,26 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
           </ListItem>
         ))}
       </List>
+
+      {/* Sign Out Button at Bottom */}
+      <Box sx={{ p: 2 }}>
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<SignOutIcon />}
+          onClick={signOut || (() => {})}
+          sx={{
+            borderColor: '#6a37b0',
+            color: '#6a37b0',
+            '&:hover': {
+              backgroundColor: '#6a37b0',
+              color: 'white',
+            },
+          }}
+        >
+          Sign Out
+        </Button>
+      </Box>
     </Box>
   );
 
@@ -78,6 +109,7 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
+          backgroundColor: '#6a37b0', // Eventual's primary color
         }}
       >
         <Toolbar>
@@ -91,14 +123,18 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            agent2_ingestor
+            Agent2 Document Ingestor
           </Typography>
-          <Typography variant="body2" sx={{ mr: 2 }}>
-            {user?.attributes?.email}
+          {/* Display user email in top right */}
+          <Typography variant="body2" sx={{ 
+            color: 'white',
+            fontWeight: 500,
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            padding: '4px 12px',
+            borderRadius: '16px',
+          }}>
+            {user?.attributes?.email || user?.username || 'User'}
           </Typography>
-          <Button color="inherit" onClick={signOut || (() => {})}>
-            Sign Out
-          </Button>
         </Toolbar>
       </AppBar>
       <Box
