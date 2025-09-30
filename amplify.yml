@@ -10,6 +10,24 @@ applications:
             - ls -la
             - node --version
             - npm --version
+            - echo "Environment branch:$AWS_BRANCH"
+            - echo "Setting up environment-specific configuration..."
+            - |
+              if [ "$AWS_BRANCH" = "main" ]; then
+                echo "Using main environment configuration"
+                cp .env.main .env.local
+                export REACT_APP_AMPLIFY_ENV=main
+              elif [ "$AWS_BRANCH" = "test" ]; then
+                echo "Using test environment configuration"
+                cp .env.test .env.local
+                export REACT_APP_AMPLIFY_ENV=test
+              else
+                echo "Using dev environment configuration (default)"
+                cp .env.dev .env.local
+                export REACT_APP_AMPLIFY_ENV=dev
+              fi
+            - echo "Current environment configuration:"
+            - cat .env.local
             - echo "Installing dependencies with npm ci..."
             - npm ci
             - echo "Dependencies installed successfully"
@@ -18,6 +36,7 @@ applications:
             - echo "Starting build phase..."
             - pwd
             - ls -la
+            - echo "Environment:$AWS_BRANCH"
             - echo "Building React application..."
             - npm run build
             - echo "Build completed successfully"
@@ -26,7 +45,7 @@ applications:
           commands:
             - echo "PostBuild phase..."
             - ls -la build/
-            - echo "Build artifacts created successfully"
+            - echo "Build artifacts created successfully for environment:$AWS_BRANCH"
       artifacts:
         baseDirectory: build
         files:
