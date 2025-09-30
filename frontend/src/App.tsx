@@ -23,11 +23,27 @@ const theme = createTheme({
   },
 });
 
+// Custom form fields configuration to change "Username" to "Email Address"
+const formFields = {
+  signIn: {
+    username: {
+      placeholder: 'Enter your email address',
+      label: 'Email Address',
+    }
+  },
+  signUp: {
+    username: {
+      placeholder: 'Enter your email address',
+      label: 'Email Address',
+    }
+  }
+};
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Authenticator>
+      <Authenticator formFields={formFields}>
         {({ signOut, user }) => (
           <Router>
             <Layout user={user} signOut={signOut}>

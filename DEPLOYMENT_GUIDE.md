@@ -1,23 +1,49 @@
-# Emergency Document Processor - Deployment & Testing Guide
+# agent2_ingestor - Multi-Environment Deployment Guide
 
-## Prerequisites
+## 🎯 Quick Reference
 
-Before deploying, ensure you have:
+### Environment URLs:
+- **DEV**: https://dev.dn1hdu83qdv9u.amplifyapp.com
+- **TEST**: https://test.dn1hdu83qdv9u.amplifyapp.com  
+- **MAIN**: https://main.dn1hdu83qdv9u.amplifyapp.com
 
-1. **AWS Account** with appropriate permissions
-2. **AWS CLI** configured with credentials
-3. **Python 3.9+** installed
-4. **Node.js 16+** and npm installed
-5. **Git** for version control
+### Cognito Configuration:
+| Environment | User Pool ID | Client ID |
+|-------------|--------------|-----------|
+| DEV | `us-east-1_ZXccV9Ntq` | `3u5hedl2mp0bvg5699l16dj4oe` |
+| TEST | `us-east-1_epXBgyusk` | `7h6q69gsuoo77200knu88dmoe4` |
+| MAIN | `us-east-1_KD9IBTRJl` | `4eq1gmn394e8ct1gpjra89vgak` |
 
-## AWS Permissions Required
+## 🚀 Deployment Workflow
 
-Your AWS user/role needs permissions for:
-- S3 (create buckets, upload objects)
-- DynamoDB (create tables, read/write)
-- Lambda (create functions, manage code)
-- IAM (create roles, attach policies)
-- SQS (create queues, send/receive messages)
+### 1. Development (DEV)
+Work on the `dev` branch for active development:
+```bash
+git checkout dev
+# Make your changes
+git add .
+git commit -m "Your changes"
+git push origin dev
+```
+→ Auto-deploys to: https://dev.dn1hdu83qdv9u.amplifyapp.com
+
+### 2. Testing (TEST)
+Deploy stable features to TEST for QA:
+```bash
+git checkout test
+git merge dev  # Merge latest dev changes
+git push origin test
+```
+→ Auto-deploys to: https://test.dn1hdu83qdv9u.amplifyapp.com
+
+### 3. Production (MAIN)
+Deploy tested features to production:
+```bash
+git checkout main
+git merge test  # Merge tested changes from test
+git push origin main
+```
+→ Auto-deploys to: https://main.dn1hdu83qdv9u.amplifyapp.com
 - EventBridge (create rules, targets)
 - Cognito (create user pools)
 - CloudFormation (deploy stacks)
