@@ -1,0 +1,99 @@
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { Amplify } from 'aws-amplify';
+import App from './App';
+
+// Direct Cognito configuration - no environment variables needed
+const cognitoConfig = {
+  dev: {
+    userPoolId: 'us-east-1_ZXccV9Ntq',
+    userPoolWebClientId: '3u5hedl2mp0bvg5699l16dj4oe'
+  },
+  test: {
+    userPoolId: 'us-east-1_epXBgyusk', 
+    userPoolWebClientId: '7h6q69gsuoo77200knu88dmoe4'
+  },
+  main: {
+    userPoolId: 'us-east-1_KD9IBTRJl',
+    userPoolWebClientId: '4eq1gmn394e8ct1gpjra89vgak'
+  }
+};
+
+// Determine environment from domain or AWS_BRANCH
+function getEnvironment(): 'dev' | 'test' | 'main' {
+  // Check AWS_BRANCH environment variable first (set by Amplify)
+  if (process.env.AWS_BRANCH) {
+    const branch = process.env.AWS_BRANCH.toLowerCase();
+    if (branch === 'dev' || branch === 'test' || branch === 'main') {
+      return branch as 'dev' | 'test' | 'main';
+    }
+  }
+
+  // Fallback to domain-based detection
+  const hostname = window.location.hostname;
+  
+  if (hostname.includes('dev') || hostname.includes('development')) {
+    return 'dev';
+  } else if (hostname.includes('test') || hostname.includes('staging')) {
+    return 'test';
+  } else if (hostname.includes('main') || hostname.includes('prod') || hostname.includes('master')) {
+    return 'main';
+  }
+  
+  // Default to dev for local development
+  return 'dev';
+}
+
+const environment = getEnvironment();
+const config = cognitoConfig[environment];
+
+console.log(`🌍 Environment detected: ${environment}`);
+console.log(`🔐 Using Cognito User Pool: ${config.userPoolId}`);
+
+// Configure Amplify with the determined configuration
+Amplify.configure({
+  Auth: {
+    Cognito: {
+      userPoolId: config.userPoolId,
+      userPoolClientId: config.userPoolWebClientId,
+      loginWith: {
+        email: true,
+        username: false,
+      },
+      signUpVerificationMethod: 'code',
+      userAttributes: {
+        email: {
+          required: true,
+        },
+      },
+      allowGuestAccess: true,
+      passwordFormat: {
+        minLength: 8,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireNumbers: true,
+        requireSpecialCharacters: false,
+      },
+    },
+  },
+  API: {
+    REST: {
+      agent2ingestor: {
+        endpoint: environment === 'main' 
+          ? 'https://api.agent2ingestor.com'
+          : `https://api-${environment}.agent2ingestor.com`,
+        region: 'us-east-1',
+      },
+    },
+  },
+});
+
+const root = ReactDOM.createRoot(
+  document.getElementById('root') as HTMLElement
+);
+
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
