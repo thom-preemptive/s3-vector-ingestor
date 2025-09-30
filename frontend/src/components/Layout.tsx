@@ -37,6 +37,11 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Debug: Log user object to understand its structure
+  React.useEffect(() => {
+    console.log('User object:', user);
+  }, [user]);
+
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
@@ -53,7 +58,7 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
       <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
         {/* Eventual Logo */}
         <img 
-          src="/eventual-logo.svg" 
+          src="/logo.Eventual_100x74_transparent.png" 
           alt="Eventual Logo" 
           style={{ 
             height: '50px', 
@@ -133,7 +138,7 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
             padding: '4px 12px',
             borderRadius: '16px',
           }}>
-            {user?.attributes?.email || user?.username || 'User'}
+            {user?.signInDetails?.loginId || user?.attributes?.email || user?.username || 'User'}
           </Typography>
         </Toolbar>
       </AppBar>
