@@ -3,12 +3,24 @@ frontend:
   phases:
     preBuild:
       commands:
+        - echo "Starting preBuild phase..."
+        - node --version
+        - npm --version
         - cd frontend
+        - echo "Installing dependencies with npm ci..."
         - npm ci
+        - echo "Dependencies installed successfully"
     build:
       commands:
+        - echo "Starting build phase..."
         - cd frontend
+        - echo "Building React application..."
         - npm run build
+        - echo "Build completed successfully"
+        - ls -la build/
+    postBuild:
+      commands:
+        - echo "Build artifacts created successfully"
   artifacts:
     baseDirectory: frontend/build
     files:

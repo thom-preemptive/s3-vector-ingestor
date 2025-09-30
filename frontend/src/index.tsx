@@ -8,14 +8,14 @@ const amplifyConfig = {
   Auth: {
     Cognito: {
       region: process.env.REACT_APP_AWS_REGION || 'us-east-1',
-      userPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID || '',
-      userPoolClientId: process.env.REACT_APP_COGNITO_CLIENT_ID || '',
+      userPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID || 'us-east-1_PLACEHOLDER',
+      userPoolClientId: process.env.REACT_APP_COGNITO_CLIENT_ID || 'PLACEHOLDER_CLIENT_ID',
     }
   },
   API: {
     REST: {
       'api': {
-        endpoint: process.env.REACT_APP_API_URL || 'http://localhost:8000',
+        endpoint: process.env.REACT_APP_API_URL || 'https://api.example.com',
         region: process.env.REACT_APP_AWS_REGION || 'us-east-1'
       }
     }
