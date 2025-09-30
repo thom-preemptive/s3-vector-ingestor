@@ -1,17 +1,25 @@
-# Authentication Form Customization
+# Authentication UI Customization
 
-## 🔐 Overview
+## 🎨 Overview
 
-The agent2_ingestor application uses AWS Amplify's Authenticator component with custom form field configurations to handle Cognito's email alias configuration properly.
+The agent2_ingestor application features a custom-branded authentication experience with Eventual's design system and simplified user flows.
 
-## ✅ Current Configuration
+## ✅ Current Implementation
 
-### Cognito Setup:
-- **Email Alias**: Enabled (users can sign in with email)
-- **Username Required**: Yes (separate from email)
-- **Required Attributes**: username, email, name
+### 🎯 Design & Branding
+- **Primary Color**: Eventual's brand color `#6a37b0`
+- **Centered Layout**: Authentication form centered on page with professional styling
+- **Card Design**: Clean white card with subtle shadow and rounded corners
+- **Responsive**: Optimized for all screen sizes
 
-### Form Field Configuration:
+### 🖌️ Visual Elements Styled
+- **Active Tab Highlighting**: Uses `#6a37b0` for active tab indicator and text
+- **Primary Buttons**: Sign In and Create Account buttons use Eventual branding
+- **Links**: "Forgot your password?" link styled with brand color
+- **Form Focus**: Input fields show brand color focus states
+- **Hover Effects**: Interactive elements have branded hover states
+
+### 📝 Form Configuration
 ```typescript
 const formFields = {
   signIn: {
@@ -22,44 +30,87 @@ const formFields = {
   },
   signUp: {
     username: {
-      placeholder: 'Enter a username (e.g., john_doe)',
-      label: 'Username',
-      order: 1,
-    },
-    email: {
       placeholder: 'Enter your email address',
       label: 'Email Address',
-      isRequired: true,
-      order: 2,
-    },
-    name: {
-      placeholder: 'Enter your full name',
-      label: 'Full Name',
-      isRequired: true,
-      order: 3,
     }
   }
 };
 ```
 
+### 🎨 Custom Styling
+```css
+.amplify-authenticator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.amplify-tabs__item[data-state="active"] {
+  color: #6a37b0 !important;
+  border-bottom-color: #6a37b0 !important;
+}
+
+.amplify-button[data-variation="primary"] {
+  background-color: #6a37b0 !important;
+  border-color: #6a37b0 !important;
+}
+```
+
 ## 🎯 User Experience
 
-### Sign In:
-- **Field**: "Email Address" 
-- **Input**: User enters their email address
-- **Backend**: Cognito resolves email to username for authentication
+### Sign In Process:
+1. **Centered Form**: Professional, centered authentication interface
+2. **Email-Focused**: Clear "Email Address" labeling (no username confusion)
+3. **Brand Consistency**: Eventual's purple branding throughout
+4. **Password Recovery**: Branded "Forgot your password?" link
 
-### Create Account:
-- **Field 1**: "Username" - User creates a unique username (cannot be email format)
-- **Field 2**: "Email Address" - User's email (used for sign-in and notifications)
-- **Field 3**: "Full Name" - User's display name
-- **Field 4**: "Password" - Meets security requirements
+### Create Account Process:
+1. **Simplified Fields**: Email and password (leverages Cognito email alias)
+2. **Clear Labeling**: "Email Address" field guidance
+3. **Password Requirements**: Standard Cognito password policy
+4. **Verification**: Email-based account verification
 
-## 🐛 Previous Issues Fixed
+## 📱 Mobile Optimization
 
-1. **Email Format Error**: Fixed by separating username and email fields in sign-up
-2. **Missing Required Attributes**: Added name field as required by Cognito schema
-3. **Field Order**: Organized fields in logical order for better UX
+The authentication interface is fully responsive:
+- **Mobile Layout**: Stack elements vertically on small screens
+- **Touch Targets**: Appropriately sized buttons for touch interaction
+- **Font Scaling**: Readable text across device sizes
+- **Form Spacing**: Comfortable padding and margins
+
+## 🔧 Technical Implementation
+
+### Theme Integration:
+- Uses Material-UI theme with Eventual's primary color
+- Overrides Amplify UI styles with custom CSS
+- Maintains accessibility standards
+- Consistent with application's overall design
+
+### Cognito Integration:
+- Email alias configuration for user-friendly sign-in
+- Secure password requirements
+- Email verification workflow
+- Password reset functionality
+
+## 🚀 Benefits
+
+1. **Professional Branding**: Consistent with Eventual's visual identity
+2. **Simplified UX**: Streamlined email-focused authentication
+3. **Mobile-Friendly**: Works perfectly on all devices
+4. **Accessible**: Meets accessibility standards
+5. **Secure**: Leverages AWS Cognito security best practices
+
+## 🎨 Color Palette
+
+- **Primary**: `#6a37b0` (Eventual Purple)
+- **Primary Hover**: `#5a2d96` (Darker Purple)
+- **Background**: `#f5f5f5` (Light Gray)
+- **Card**: `#ffffff` (White)
+- **Text**: Standard Amplify UI text colors
+
+This creates a cohesive, professional authentication experience that aligns with Eventual's brand while providing an intuitive user interface.
 
 ## 🚀 Deployment Status
 

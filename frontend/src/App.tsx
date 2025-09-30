@@ -2,7 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Authenticator } from '@aws-amplify/ui-react';
+import { Authenticator, useAuthenticator, View, Image, Text, Heading, Card } from '@aws-amplify/ui-react';
+import { signUp } from 'aws-amplify/auth';
 import '@aws-amplify/ui-react/styles.css';
 
 import Layout from './components/Layout';
@@ -23,7 +24,8 @@ const theme = createTheme({
   },
 });
 
-// Simplified form fields - email and password only  
+// Simple approach: modify the form fields to include both username and email
+// but provide clear instructions to users
 const formFields = {
   signIn: {
     username: {
@@ -33,8 +35,15 @@ const formFields = {
   },
   signUp: {
     username: {
+      placeholder: 'Create a username (letters and numbers only)',
+      label: 'Username',
+      order: 1,
+    },
+    email: {
       placeholder: 'Enter your email address',
       label: 'Email Address',
+      isRequired: true,
+      order: 2,
     }
   }
 };
@@ -53,13 +62,24 @@ const authenticatorStyles = `
     max-width: 400px;
     width: 100%;
     margin: 0 auto;
-  }
-  
-  .amplify-tabs {
-    background-color: white;
+    background: white;
+    padding: 2rem;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    padding: 2rem;
+  }
+  
+  /* Add helper text for the signup form */
+  .amplify-tabs__panel[data-value="sign-up"]::before {
+    content: "📝 To create an account: choose a username (letters/numbers only), then add your email address.";
+    display: block;
+    background-color: #e8f4fd;
+    border: 1px solid #6a37b0;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #333;
+    text-align: center;
   }
   
   /* Apply Eventual's primary color to active elements */
@@ -94,6 +114,13 @@ const authenticatorStyles = `
   .amplify-input:focus {
     border-color: #6a37b0 !important;
     box-shadow: 0 0 0 2px rgba(106, 55, 176, 0.2) !important;
+  }
+  
+  .amplify-tabs {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
   }
 `;
 
