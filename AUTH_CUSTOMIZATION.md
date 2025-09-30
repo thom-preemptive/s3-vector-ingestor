@@ -2,15 +2,16 @@
 
 ## 🔐 Overview
 
-The agent2_ingestor application uses AWS Amplify's Authenticator component with custom form field configurations to improve user experience.
+The agent2_ingestor application uses AWS Amplify's Authenticator component with custom form field configurations to handle Cognito's email alias configuration properly.
 
-## ✅ Current Customizations
+## ✅ Current Configuration
 
-### Field Label Changes:
-- **Username → Email Address**: Both Sign In and Create Account forms now show "Email Address" instead of "Username"
-- **Placeholder Text**: Updated to "Enter your email address" for clarity
+### Cognito Setup:
+- **Email Alias**: Enabled (users can sign in with email)
+- **Username Required**: Yes (separate from email)
+- **Required Attributes**: username, email, name
 
-### Implementation:
+### Form Field Configuration:
 ```typescript
 const formFields = {
   signIn: {
@@ -21,18 +22,44 @@ const formFields = {
   },
   signUp: {
     username: {
+      placeholder: 'Enter a username (e.g., john_doe)',
+      label: 'Username',
+      order: 1,
+    },
+    email: {
       placeholder: 'Enter your email address',
       label: 'Email Address',
+      isRequired: true,
+      order: 2,
+    },
+    name: {
+      placeholder: 'Enter your full name',
+      label: 'Full Name',
+      isRequired: true,
+      order: 3,
     }
   }
 };
 ```
 
-## 🎯 User Experience Benefits
+## 🎯 User Experience
 
-1. **Clarity**: Users understand they should enter their email address
-2. **Consistency**: Matches the Cognito configuration that uses email for authentication
-3. **Reduced Confusion**: Eliminates the ambiguity of what "username" means in this context
+### Sign In:
+- **Field**: "Email Address" 
+- **Input**: User enters their email address
+- **Backend**: Cognito resolves email to username for authentication
+
+### Create Account:
+- **Field 1**: "Username" - User creates a unique username (cannot be email format)
+- **Field 2**: "Email Address" - User's email (used for sign-in and notifications)
+- **Field 3**: "Full Name" - User's display name
+- **Field 4**: "Password" - Meets security requirements
+
+## 🐛 Previous Issues Fixed
+
+1. **Email Format Error**: Fixed by separating username and email fields in sign-up
+2. **Missing Required Attributes**: Added name field as required by Cognito schema
+3. **Field Order**: Organized fields in logical order for better UX
 
 ## 🚀 Deployment Status
 
