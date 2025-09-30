@@ -21,6 +21,7 @@ import {
   Assignment as JobsIcon,
   CheckCircle as ApprovalIcon,
   ExitToApp as SignOutIcon,
+  Language as UrlIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -49,6 +50,7 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
     { text: 'Upload Documents', icon: <UploadIcon />, path: '/upload' },
+    { text: 'URL Scraping', icon: <UrlIcon />, path: '/url-scraping' },
     { text: 'Jobs', icon: <JobsIcon />, path: '/jobs' },
     { text: 'Approvals', icon: <ApprovalIcon />, path: '/approvals' },
   ];

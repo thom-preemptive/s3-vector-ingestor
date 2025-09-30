@@ -20,7 +20,6 @@ interface UploadPageProps {}
 
 const UploadPage: React.FC<UploadPageProps> = () => {
   const [files, setFiles] = React.useState<File[]>([]);
-  const [urls, setUrls] = React.useState<string>('');
   const [jobName, setJobName] = React.useState<string>('');
   const [approvalRequired, setApprovalRequired] = React.useState<boolean>(true);
   const [uploading, setUploading] = React.useState<boolean>(false);
@@ -44,8 +43,8 @@ const UploadPage: React.FC<UploadPageProps> = () => {
   };
 
   const handleSubmit = async () => {
-    if (files.length === 0 && !urls.trim()) {
-      setError('Please select files or enter URLs');
+    if (files.length === 0) {
+      setError('Please select at least one PDF file');
       return;
     }
     if (!jobName.trim()) {
@@ -58,53 +57,25 @@ const UploadPage: React.FC<UploadPageProps> = () => {
     setUploadResult(null);
 
     try {
-      // Handle file uploads
-      if (files.length > 0) {
-        const formData = new FormData();
-        files.forEach(file => formData.append('files', file));
-        formData.append('job_name', jobName);
-        formData.append('approval_required', approvalRequired.toString());
+      const formData = new FormData();
+      files.forEach(file => formData.append('files', file));
+      formData.append('job_name', jobName);
+      formData.append('approval_required', approvalRequired.toString());
 
-        const response = await fetch('/api/upload/pdf', {
-          method: 'POST',
-          body: formData,
-        });
+      const response = await fetch('/api/upload/pdf', {
+        method: 'POST',
+        body: formData,
+      });
 
-        if (!response.ok) {
-          throw new Error('Upload failed');
-        }
-
-        const result = await response.json();
-        setUploadResult(result);
+      if (!response.ok) {
+        throw new Error('Upload failed');
       }
 
-      // Handle URL processing
-      if (urls.trim()) {
-        const urlList = urls.split('\n').filter(url => url.trim());
-        const response = await fetch('/api/process/urls', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            urls: urlList,
-            user_id: 'current-user', // TODO: Get from auth context
-            job_name: jobName,
-            approval_required: approvalRequired,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('URL processing failed');
-        }
-
-        const result = await response.json();
-        setUploadResult(result);
-      }
+      const result = await response.json();
+      setUploadResult(result);
 
       // Clear form on success
       setFiles([]);
-      setUrls('');
       setJobName('');
     } catch (err: any) {
       setError(err.message || 'An error occurred');
@@ -117,6 +88,10 @@ const UploadPage: React.FC<UploadPageProps> = () => {
     <Box sx={{ maxWidth: 800, mx: 'auto' }}>
       <Typography variant="h4" gutterBottom>
         Upload Documents
+      </Typography>
+      
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Upload PDF documents for processing and vectorization. Files will be converted to markdown and made searchable.
       </Typography>
 
       {error && (
@@ -213,31 +188,15 @@ const UploadPage: React.FC<UploadPageProps> = () => {
         )}
       </Paper>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Process URLs
-        </Typography>
-        <TextField
-          fullWidth
-          multiline
-          rows={4}
-          label="URLs to Process"
-          value={urls}
-          onChange={(e) => setUrls(e.target.value)}
-          placeholder="Enter URLs, one per line"
-          helperText="Enter one URL per line. These will be scraped and processed into markdown format."
-        />
-      </Paper>
-
       <Box sx={{ textAlign: 'center' }}>
         <Button
           variant="contained"
           size="large"
           onClick={handleSubmit}
-          disabled={uploading || (files.length === 0 && !urls.trim()) || !jobName.trim()}
+          disabled={uploading || files.length === 0 || !jobName.trim()}
           startIcon={uploading ? <CircularProgress size={20} /> : <UploadIcon />}
         >
-          {uploading ? 'Processing...' : 'Submit Job'}
+          {uploading ? 'Uploading...' : 'Upload Documents'}
         </Button>
       </Box>
     </Box>

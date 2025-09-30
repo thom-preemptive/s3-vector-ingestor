@@ -2,13 +2,13 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Authenticator, useAuthenticator, View, Image, Text, Heading, Card } from '@aws-amplify/ui-react';
-import { signUp } from 'aws-amplify/auth';
+import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import UploadPage from './components/UploadPage';
+import URLScrapingPage from './components/URLScrapingPage';
 import JobsPage from './components/JobsPage';
 import ApprovalPage from './components/ApprovalPage';
 
@@ -167,6 +167,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/upload" element={<UploadPage />} />
+                <Route path="/url-scraping" element={<URLScrapingPage />} />
                 <Route path="/jobs" element={<JobsPage />} />
                 <Route path="/approvals" element={<ApprovalPage />} />
               </Routes>
