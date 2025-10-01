@@ -113,9 +113,9 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
             display: 'block',
             textAlign: 'center',
             mt: 1,
-            fontSize: '6pt',
-            color: 'text.secondary',
-            opacity: 0.7
+            fontSize: '10pt',
+            color: 'black',
+            fontWeight: 500
           }}
         >
           ver. {versionInfo.version}
