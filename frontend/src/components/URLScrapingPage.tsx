@@ -1,4 +1,6 @@
 import React from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import {
   Box,
   Paper,
@@ -19,6 +21,7 @@ interface URLScrapingPageProps {
 const URLScrapingPage: React.FC<URLScrapingPageProps> = ({ user }) => {
   const [urls, setUrls] = React.useState<string>('');
   const [jobName, setJobName] = React.useState<string>('');
+  const [notes, setNotes] = React.useState<string>('');
   const [approvalRequired, setApprovalRequired] = React.useState<boolean>(true);
   const [processing, setProcessing] = React.useState<boolean>(false);
   const [processResult, setProcessResult] = React.useState<any>(null);
@@ -61,6 +64,7 @@ const URLScrapingPage: React.FC<URLScrapingPageProps> = ({ user }) => {
           urls: urlList,
           user_id: 'current-user', // TODO: Get from auth context
           job_name: jobName,
+          notes: notes,
           approval_required: approvalRequired,
         }),
       });
@@ -108,16 +112,40 @@ const URLScrapingPage: React.FC<URLScrapingPageProps> = ({ user }) => {
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Job Details
+          Job Title
         </Typography>
         <TextField
           fullWidth
-          label="Job Name"
+          label="Job Title"
           value={jobName}
           onChange={(e) => setJobName(e.target.value)}
           sx={{ mb: 2 }}
           placeholder="e.g., Website Content Scraping - Q4 2024"
         />
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body1" sx={{ mb: 1, fontWeight: 500 }}>
+            Notes
+          </Typography>
+          <ReactQuill
+            theme="snow"
+            value={notes}
+            onChange={setNotes}
+            placeholder="Optional details about information source, et cetera"
+            style={{ 
+              height: '100px',
+              marginBottom: '50px' // Extra space for toolbar
+            }}
+            modules={{
+              toolbar: [
+                [{ 'header': [1, 2, false] }],
+                ['bold', 'italic', 'underline'],
+                ['link'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['clean']
+              ],
+            }}
+          />
+        </Box>
         {!isThomUser && (
           <FormControlLabel
             control={

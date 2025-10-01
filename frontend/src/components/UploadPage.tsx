@@ -1,5 +1,7 @@
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import {
   Box,
   Paper,
@@ -23,6 +25,7 @@ interface UploadPageProps {
 const UploadPage: React.FC<UploadPageProps> = ({ user }) => {
   const [files, setFiles] = React.useState<File[]>([]);
   const [jobName, setJobName] = React.useState<string>('');
+  const [notes, setNotes] = React.useState<string>('');
   const [approvalRequired, setApprovalRequired] = React.useState<boolean>(true);
   const [uploading, setUploading] = React.useState<boolean>(false);
   const [uploadResult, setUploadResult] = React.useState<any>(null);
@@ -73,6 +76,7 @@ const UploadPage: React.FC<UploadPageProps> = ({ user }) => {
       const formData = new FormData();
       files.forEach(file => formData.append('files', file));
       formData.append('job_name', jobName);
+      formData.append('notes', notes);
       formData.append('approval_required', approvalRequired.toString());
 
       // Use environment variable for API URL, fallback to relative path for production
@@ -126,16 +130,40 @@ const UploadPage: React.FC<UploadPageProps> = ({ user }) => {
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Job Details
+          Job Title
         </Typography>
         <TextField
           fullWidth
-          label="Job Name"
+          label="Job Title"
           value={jobName}
           onChange={(e) => setJobName(e.target.value)}
           sx={{ mb: 2 }}
           placeholder="e.g., Emergency Response Documents - Q4 2024"
         />
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body1" sx={{ mb: 1, fontWeight: 500 }}>
+            Notes
+          </Typography>
+          <ReactQuill
+            theme="snow"
+            value={notes}
+            onChange={setNotes}
+            placeholder="Optional details about information source, et cetera"
+            style={{ 
+              height: '100px',
+              marginBottom: '50px' // Extra space for toolbar
+            }}
+            modules={{
+              toolbar: [
+                [{ 'header': [1, 2, false] }],
+                ['bold', 'italic', 'underline'],
+                ['link'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['clean']
+              ],
+            }}
+          />
+        </Box>
         {!isThomUser && (
           <FormControlLabel
             control={
