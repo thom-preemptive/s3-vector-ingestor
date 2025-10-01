@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: agent2_ingestor Backend API
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+    Runtime: python3.11
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues: ['dev', 'test', 'main']
+    Description: 'Environment name'
+
+Resources:
+  Agent2IngestorAPI:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'agent2-ingestor-api-${Environment}'
+      CodeUri: .
+      Handler: lambda_handler.handler
+      Runtime: python3.11
+      Timeout: 30
+      MemorySize: 1024
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref Agent2IngestorApiGateway
+        RootApiEvent:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+            RestApiId: !Ref Agent2IngestorApiGateway
+
+  Agent2IngestorApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub 'agent2-ingestor-api-${Environment}'
+      StageName: !Ref Environment
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+      EndpointConfiguration:
+        Type: REGIONAL
+
+Outputs:
+  ApiGatewayUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${Agent2IngestorApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiUrl"
+  
+  ApiGatewayId:
+    Description: "API Gateway ID"
+    Value: !Ref Agent2IngestorApiGateway
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiId"
