@@ -81,7 +81,13 @@ const UploadPage: React.FC<UploadPageProps> = ({ user }) => {
 
       // Use environment variable for API URL, fallback to relative path for production
       const apiUrl = process.env.REACT_APP_API_URL || '';
-      const uploadEndpoint = apiUrl ? `${apiUrl}/upload/pdf` : '/upload/pdf';
+      
+      // Check if we have a backend API configured
+      if (!apiUrl) {
+        throw new Error('Backend API not yet deployed. This is a frontend-only demo. Backend deployment coming soon!');
+      }
+      
+      const uploadEndpoint = `${apiUrl}/upload/pdf`;
 
       const response = await fetch(uploadEndpoint, {
         method: 'POST',
@@ -99,8 +105,13 @@ const UploadPage: React.FC<UploadPageProps> = ({ user }) => {
       // Clear form on success
       setFiles([]);
       setJobName('');
+      setNotes('');
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
+        setError('Backend API not available. This is a frontend-only demo. Backend deployment coming soon!');
+      } else {
+        setError(err.message || 'An error occurred');
+      }
     } finally {
       setUploading(false);
     }

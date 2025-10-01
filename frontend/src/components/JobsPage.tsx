@@ -44,7 +44,25 @@ const JobsPage: React.FC = () => {
     
     try {
       const apiUrl = process.env.REACT_APP_API_URL || '';
-      const jobsEndpoint = apiUrl ? `${apiUrl}/jobs` : '/jobs';
+      
+      // Check if we have a backend API configured
+      if (!apiUrl) {
+        // For demo purposes, show some mock data
+        setJobs([
+          {
+            job_id: '1',
+            job_name: 'Demo Job - Backend Not Deployed',
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            file_count: 0,
+            files: [],
+            approval_required: true
+          }
+        ]);
+        return;
+      }
+      
+      const jobsEndpoint = `${apiUrl}/jobs`;
       
       const response = await fetch(jobsEndpoint);
       
@@ -55,7 +73,23 @@ const JobsPage: React.FC = () => {
       const data = await response.json();
       setJobs(data.jobs || []);
     } catch (err: any) {
-      setError(err.message || 'Failed to load jobs');
+      if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
+        setError('Backend API not available. Showing demo data.');
+        // Show demo data when API is not available
+        setJobs([
+          {
+            job_id: '1',
+            job_name: 'Demo Job - Backend Not Deployed',
+            status: 'pending', 
+            created_at: new Date().toISOString(),
+            file_count: 0,
+            files: [],
+            approval_required: true
+          }
+        ]);
+      } else {
+        setError(err.message || 'Failed to load jobs');
+      }
     } finally {
       setLoading(false);
     }

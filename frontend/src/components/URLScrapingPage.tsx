@@ -55,7 +55,14 @@ const URLScrapingPage: React.FC<URLScrapingPageProps> = ({ user }) => {
 
     try {
       const urlList = urls.split('\n').filter(url => url.trim());
-      const response = await fetch('/api/process/urls', {
+      
+      // Check if we have a backend API configured
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      if (!apiUrl) {
+        throw new Error('Backend API not yet deployed. This is a frontend-only demo. Backend deployment coming soon!');
+      }
+      
+      const response = await fetch(`${apiUrl}/api/process/urls`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,8 +86,13 @@ const URLScrapingPage: React.FC<URLScrapingPageProps> = ({ user }) => {
       // Clear form on success
       setUrls('');
       setJobName('');
+      setNotes('');
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
+        setError('Backend API not available. This is a frontend-only demo. Backend deployment coming soon!');
+      } else {
+        setError(err.message || 'An error occurred');
+      }
     } finally {
       setProcessing(false);
     }
