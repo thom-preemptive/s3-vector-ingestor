@@ -15,12 +15,13 @@ The Cognito authentication issue has been resolved by setting environment variab
 
 ### Method 1: AWS CLI (✅ Used Successfully)
 ```bash
+# Updated as of September 30, 2025 - Corrected User Pool IDs
 aws amplify update-branch \
     --app-id dn1hdu83qdv9u \
     --branch-name dev \
     --environment-variables \
-        "REACT_APP_COGNITO_USER_POOL_ID"="us-east-1_ZXccV9Ntq" \
-        "REACT_APP_COGNITO_CLIENT_ID"="3u5hedl2mp0bvg5699l16dj4oe" \
+        "REACT_APP_COGNITO_USER_POOL_ID"="us-east-1_Yk8Yt64uE" \
+        "REACT_APP_COGNITO_CLIENT_ID"="6hcundvt29da9ap8ji973h1pqq" \
         "REACT_APP_AWS_REGION"="us-east-1" \
     --region us-east-1
 ```
