@@ -24,6 +24,7 @@ import {
   Language as UrlIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import versionInfo from '../version.json';
 
 const drawerWidth = 240;
 
@@ -104,6 +105,21 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
         >
           Sign Out
         </Button>
+        
+        {/* Version Number */}
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            display: 'block',
+            textAlign: 'center',
+            mt: 1,
+            fontSize: '6pt',
+            color: 'text.secondary',
+            opacity: 0.7
+          }}
+        >
+          ver. {versionInfo.version}
+        </Typography>
       </Box>
     </Box>
   );

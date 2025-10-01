@@ -31,12 +31,17 @@ applications:
             - echo "Installing dependencies with npm ci..."
             - npm ci
             - echo "Dependencies installed successfully"
+            - echo "Installing build dependencies..."
+            - apt-get update && apt-get install -y bc jq || yum install -y bc jq || true
+            - echo "Build dependencies installed"
         build:
           commands:
             - echo "Starting build phase..."
             - pwd
             - ls -la
             - echo "Environment:$AWS_BRANCH"
+            - echo "Incrementing version number..."
+            - bash increment-version.sh
             - echo "Building React application..."
             - npm run build
             - echo "Build completed successfully"
