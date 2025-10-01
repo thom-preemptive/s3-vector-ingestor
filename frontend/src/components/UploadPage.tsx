@@ -62,13 +62,18 @@ const UploadPage: React.FC<UploadPageProps> = () => {
       formData.append('job_name', jobName);
       formData.append('approval_required', approvalRequired.toString());
 
-      const response = await fetch('/api/upload/pdf', {
+      // Use environment variable for API URL, fallback to relative path for production
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      const uploadEndpoint = apiUrl ? `${apiUrl}/upload/pdf` : '/upload/pdf';
+
+      const response = await fetch(uploadEndpoint, {
         method: 'POST',
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorText = await response.text();
+        throw new Error(`Upload failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();
