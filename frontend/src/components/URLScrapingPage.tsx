@@ -12,15 +12,28 @@ import {
 } from '@mui/material';
 import { Language as UrlIcon } from '@mui/icons-material';
 
-interface URLScrapingPageProps {}
+interface URLScrapingPageProps {
+  user?: any;
+}
 
-const URLScrapingPage: React.FC<URLScrapingPageProps> = () => {
+const URLScrapingPage: React.FC<URLScrapingPageProps> = ({ user }) => {
   const [urls, setUrls] = React.useState<string>('');
   const [jobName, setJobName] = React.useState<string>('');
   const [approvalRequired, setApprovalRequired] = React.useState<boolean>(true);
   const [processing, setProcessing] = React.useState<boolean>(false);
   const [processResult, setProcessResult] = React.useState<any>(null);
   const [error, setError] = React.useState<string>('');
+
+  // Check if current user is thom@preemptive.tech to hide approval option
+  const userEmail = user?.signInDetails?.loginId || user?.attributes?.email || user?.username || '';
+  const isThomUser = userEmail === 'thom@preemptive.tech';
+
+  // Set default approval state based on user
+  React.useEffect(() => {
+    if (isThomUser) {
+      setApprovalRequired(false);
+    }
+  }, [isThomUser]);
 
   const handleSubmit = async () => {
     if (!urls.trim()) {
@@ -105,15 +118,17 @@ const URLScrapingPage: React.FC<URLScrapingPageProps> = () => {
           sx={{ mb: 2 }}
           placeholder="e.g., Website Content Scraping - Q4 2024"
         />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={approvalRequired}
-              onChange={(e) => setApprovalRequired(e.target.checked)}
-            />
-          }
-          label="Require approval before processing"
-        />
+        {!isThomUser && (
+          <FormControlLabel
+            control={
+              <Switch
+                checked={approvalRequired}
+                onChange={(e) => setApprovalRequired(e.target.checked)}
+              />
+            }
+            label="Require approval before processing"
+          />
+        )}
       </Paper>
 
       <Paper sx={{ p: 3, mb: 3 }}>

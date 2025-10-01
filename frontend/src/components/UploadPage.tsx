@@ -16,15 +16,28 @@ import {
 } from '@mui/material';
 import { CloudUpload as UploadIcon } from '@mui/icons-material';
 
-interface UploadPageProps {}
+interface UploadPageProps {
+  user?: any;
+}
 
-const UploadPage: React.FC<UploadPageProps> = () => {
+const UploadPage: React.FC<UploadPageProps> = ({ user }) => {
   const [files, setFiles] = React.useState<File[]>([]);
   const [jobName, setJobName] = React.useState<string>('');
   const [approvalRequired, setApprovalRequired] = React.useState<boolean>(true);
   const [uploading, setUploading] = React.useState<boolean>(false);
   const [uploadResult, setUploadResult] = React.useState<any>(null);
   const [error, setError] = React.useState<string>('');
+
+  // Check if current user is thom@preemptive.tech to hide approval option
+  const userEmail = user?.signInDetails?.loginId || user?.attributes?.email || user?.username || '';
+  const isThomUser = userEmail === 'thom@preemptive.tech';
+
+  // Set default approval state based on user
+  React.useEffect(() => {
+    if (isThomUser) {
+      setApprovalRequired(false);
+    }
+  }, [isThomUser]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFiles(prev => [...prev, ...acceptedFiles]);
@@ -123,15 +136,17 @@ const UploadPage: React.FC<UploadPageProps> = () => {
           sx={{ mb: 2 }}
           placeholder="e.g., Emergency Response Documents - Q4 2024"
         />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={approvalRequired}
-              onChange={(e) => setApprovalRequired(e.target.checked)}
-            />
-          }
-          label="Require approval before processing"
-        />
+        {!isThomUser && (
+          <FormControlLabel
+            control={
+              <Switch
+                checked={approvalRequired}
+                onChange={(e) => setApprovalRequired(e.target.checked)}
+              />
+            }
+            label="Require approval before processing"
+          />
+        )}
       </Paper>
 
       <Paper sx={{ p: 3, mb: 3 }}>

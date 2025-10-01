@@ -173,8 +173,8 @@ function App() {
             <Layout user={user} signOut={signOut}>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/upload" element={<UploadPage />} />
-                <Route path="/url-scraping" element={<URLScrapingPage />} />
+                <Route path="/upload" element={<UploadPage user={user} />} />
+                <Route path="/url-scraping" element={<URLScrapingPage user={user} />} />
                 <Route path="/jobs" element={<JobsPage />} />
                 <Route path="/approvals" element={<ApprovalPage />} />
               </Routes>
