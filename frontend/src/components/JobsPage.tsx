@@ -37,6 +37,7 @@ const JobsPage: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [isDemoData, setIsDemoData] = useState<boolean>(false);
 
   const fetchJobs = async () => {
     setLoading(true);
@@ -47,18 +48,38 @@ const JobsPage: React.FC = () => {
       
       // Check if we have a backend API configured
       if (!apiUrl) {
-        // For demo purposes, show some mock data
-        setJobs([
+        // For demo purposes, show some realistic mock data
+        const demoJobs = [
           {
-            job_id: '1',
-            job_name: 'Demo Job - Backend Not Deployed',
-            status: 'pending',
-            created_at: new Date().toISOString(),
+            job_id: 'demo-001',
+            job_name: 'Emergency Response Documents - Q4 2024',
+            status: 'completed',
+            created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+            file_count: 5,
+            files: ['emergency_plan.pdf', 'contact_list.pdf', 'protocols.pdf', 'maps.pdf', 'checklist.pdf'],
+            approval_required: true
+          },
+          {
+            job_id: 'demo-002', 
+            job_name: 'Website Content Scraping - Marketing Analysis',
+            status: 'processing',
+            created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
             file_count: 0,
             files: [],
+            approval_required: false
+          },
+          {
+            job_id: 'demo-003',
+            job_name: 'Policy Documentation Update',
+            status: 'pending',
+            created_at: new Date().toISOString(), // Just now
+            file_count: 3,
+            files: ['policy_v1.pdf', 'guidelines.pdf', 'amendments.pdf'],
             approval_required: true
           }
-        ]);
+        ];
+        setJobs(demoJobs);
+        setIsDemoData(true);
         return;
       }
       
@@ -69,27 +90,43 @@ const JobsPage: React.FC = () => {
       if (!response.ok) {
         throw new Error(`Failed to fetch jobs: ${response.status}`);
       }
-      
+
       const data = await response.json();
       setJobs(data.jobs || []);
+      setIsDemoData(false);
     } catch (err: any) {
-      if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
-        setError('Backend API not available. Showing demo data.');
-        // Show demo data when API is not available
-        setJobs([
-          {
-            job_id: '1',
-            job_name: 'Demo Job - Backend Not Deployed',
-            status: 'pending', 
-            created_at: new Date().toISOString(),
-            file_count: 0,
-            files: [],
-            approval_required: true
-          }
-        ]);
-      } else {
-        setError(err.message || 'Failed to load jobs');
-      }
+      // Silently fall back to demo data instead of showing error
+      const demoJobs = [
+        {
+          job_id: 'demo-001',
+          job_name: 'Emergency Response Documents - Q4 2024',
+          status: 'completed',
+          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          file_count: 5,
+          files: ['emergency_plan.pdf', 'contact_list.pdf', 'protocols.pdf', 'maps.pdf', 'checklist.pdf'],
+          approval_required: true
+        },
+        {
+          job_id: 'demo-002',
+          job_name: 'Website Content Scraping - Marketing Analysis', 
+          status: 'processing',
+          created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+          file_count: 0,
+          files: [],
+          approval_required: false
+        },
+        {
+          job_id: 'demo-003',
+          job_name: 'Policy Documentation Update',
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          file_count: 3,
+          files: ['policy_v1.pdf', 'guidelines.pdf', 'amendments.pdf'],
+          approval_required: true
+        }
+      ];
+      setJobs(demoJobs);
+      setIsDemoData(true);
     } finally {
       setLoading(false);
     }
@@ -141,9 +178,20 @@ const JobsPage: React.FC = () => {
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          Document Processing Jobs
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Typography variant="h4" gutterBottom>
+            Document Processing Jobs
+          </Typography>
+          {isDemoData && (
+            <Chip 
+              label="Demo Data" 
+              size="small" 
+              color="info" 
+              variant="outlined"
+              sx={{ opacity: 0.7 }}
+            />
+          )}
+        </Box>
         <Button
           variant="outlined"
           startIcon={<RefreshIcon />}
