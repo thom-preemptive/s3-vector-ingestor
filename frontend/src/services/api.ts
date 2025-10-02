@@ -7,7 +7,9 @@ const API_ENDPOINT = process.env.REACT_APP_API_URL || 'https://pubp32frrg.execut
 const getAuthHeaders = async (): Promise<Record<string, string>> => {
   try {
     const session = await fetchAuthSession();
+    console.log('Auth session:', session);
     const token = session.tokens?.idToken?.toString();
+    console.log('ID Token retrieved:', token ? 'Yes (length: ' + token.length + ')' : 'No');
     if (token) {
       return {
         'Authorization': `Bearer ${token}`,
@@ -19,6 +21,7 @@ const getAuthHeaders = async (): Promise<Record<string, string>> => {
   }
   
   // Return headers without auth if token not available
+  console.warn('No auth token available, returning headers without Authorization');
   return {
     'Content-Type': 'application/json'
   };
@@ -95,18 +98,25 @@ export const apiService = {
   // Jobs endpoints
   async getJobs() {
     try {
+      console.log('getJobs: Fetching from', `${API_ENDPOINT}/jobs`);
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_ENDPOINT}/jobs`, {
         headers
       });
       
+      console.log('getJobs: Response status:', response.status);
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('getJobs: Error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      return await response.json();
+      const result = await response.json();
+      console.log('getJobs: Success! Jobs count:', result.jobs?.length || 0);
+      return result;
     } catch (error) {
-      console.error('Error fetching jobs:', error);
+      console.error('getJobs: Caught error:', error);
       // Return mock data for development
       return {
         jobs: [
@@ -134,8 +144,11 @@ export const apiService = {
   // Upload document
   async uploadDocument(formData: FormData) {
     try {
+      console.log('uploadDocument: Starting upload to', `${API_ENDPOINT}/upload/pdf`);
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
+      console.log('uploadDocument: Token retrieved:', token ? 'Yes (length: ' + token.length + ')' : 'No');
+      
       const response = await fetch(`${API_ENDPOINT}/upload/pdf`, {
         method: 'POST',
         headers: {
@@ -145,13 +158,19 @@ export const apiService = {
         body: formData
       });
       
+      console.log('uploadDocument: Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('uploadDocument: Error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
       
-      return await response.json();
+      const result = await response.json();
+      console.log('uploadDocument: Success! Result:', result);
+      return result;
     } catch (error) {
-      console.error('Error uploading document:', error);
+      console.error('uploadDocument: Caught error:', error);
       // Return mock success for development
       return {
         success: true,
