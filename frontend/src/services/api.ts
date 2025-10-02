@@ -137,8 +137,10 @@ export const apiService = {
       // Return mock success for development
       return {
         success: true,
-        jobId: `mock-${Date.now()}`,
-        message: 'Document upload simulation successful'
+        job_id: `mock-${Date.now()}`,
+        status: 'pending',
+        files_count: 0,
+        message: 'Document upload simulation successful (mock data)'
       };
     }
   },
@@ -167,8 +169,9 @@ export const apiService = {
       // Return mock success for development
       return {
         success: true,
-        jobId: `mock-url-${Date.now()}`,
-        message: 'URL submission simulation successful'
+        job_id: `mock-url-${Date.now()}`,
+        status: 'pending',
+        message: 'URL submission simulation successful (mock data)'
       };
     }
   },

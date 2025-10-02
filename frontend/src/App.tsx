@@ -9,6 +9,7 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import UploadPage from './components/UploadPage';
 import URLScrapingPage from './components/URLScrapingPage';
+import JobsPage from './components/JobsPage';
 import ApprovalPage from './components/ApprovalPage';
 
 const theme = createTheme({
@@ -174,6 +175,7 @@ function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/upload" element={<UploadPage user={user} />} />
                 <Route path="/url-scraping" element={<URLScrapingPage user={user} />} />
+                <Route path="/jobs" element={<JobsPage />} />
                 <Route path="/approvals" element={<ApprovalPage />} />
               </Routes>
             </Layout>
