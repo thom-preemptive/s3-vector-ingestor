@@ -1,11 +1,25 @@
+import { fetchAuthSession } from 'aws-amplify/auth';
+
 // Get the API endpoint from environment variables
 const API_ENDPOINT = process.env.REACT_APP_API_URL || 'https://pubp32frrg.execute-api.us-east-1.amazonaws.com/dev';
 
 // Helper function to get auth headers
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('access_token');
+const getAuthHeaders = async (): Promise<Record<string, string>> => {
+  try {
+    const session = await fetchAuthSession();
+    const token = session.tokens?.idToken?.toString();
+    if (token) {
+      return {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+    }
+  } catch (error) {
+    console.error('Error getting auth token:', error);
+  }
+  
+  // Return headers without auth if token not available
   return {
-    'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
   };
 };
@@ -26,8 +40,9 @@ export const apiService = {
   // Dashboard endpoints
   async getDashboardJobs(limit = 20) {
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_ENDPOINT}/dashboard/jobs?limit=${limit}`, {
-        headers: getAuthHeaders()
+        headers
       });
       
       if (!response.ok) {
@@ -55,8 +70,9 @@ export const apiService = {
 
   async getQueueStats() {
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_ENDPOINT}/dashboard/queues`, {
-        headers: getAuthHeaders()
+        headers
       });
       
       if (!response.ok) {
@@ -79,8 +95,9 @@ export const apiService = {
   // Jobs endpoints
   async getJobs() {
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_ENDPOINT}/jobs`, {
-        headers: getAuthHeaders()
+        headers
       });
       
       if (!response.ok) {
@@ -117,7 +134,8 @@ export const apiService = {
   // Upload document
   async uploadDocument(formData: FormData) {
     try {
-      const token = localStorage.getItem('access_token');
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
       const response = await fetch(`${API_ENDPOINT}/upload/pdf`, {
         method: 'POST',
         headers: {
@@ -148,9 +166,10 @@ export const apiService = {
   // Submit URL for scraping
   async submitUrl(urlData: { url: string; notes?: string; approvalRequired?: boolean }) {
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_ENDPOINT}/process/urls`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers,
         body: JSON.stringify({
           urls: [urlData.url],
           user_id: 'current-user',
@@ -179,8 +198,9 @@ export const apiService = {
   // Approval endpoints
   async getPendingApprovals() {
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_ENDPOINT}/approvals/pending`, {
-        headers: getAuthHeaders()
+        headers
       });
       
       if (!response.ok) {
@@ -207,9 +227,10 @@ export const apiService = {
 
   async approveItem(id: string, approved: boolean) {
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_ENDPOINT}/approvals/${id}`, {
         method: 'PUT',
-        headers: getAuthHeaders(),
+        headers,
         body: JSON.stringify({ approved })
       });
       
