@@ -124,18 +124,16 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         # Extract the token from the Authorization header
         token = credentials.credentials
         
-        # Verify the JWT token using Cognito
+        # Verify the JWT token using Cognito (ID token verification)
         token_payload = await cognito_service.verify_token(token)
         
-        # Get additional user information
-        user_info = await cognito_service.get_user_info(token)
-        
+        # Extract user info from the token payload (ID token contains all necessary claims)
+        # No need to call GetUser API since ID token has all the info we need
         return {
-            "user_id": token_payload.get("sub", user_info.get("user_id")),
-            "username": token_payload.get("cognito:username", user_info.get("username")),
-            "email": token_payload.get("email", user_info.get("attributes", {}).get("email")),
-            "token_payload": token_payload,
-            "user_info": user_info
+            "user_id": token_payload.get("sub"),
+            "username": token_payload.get("cognito:username", token_payload.get("email")),
+            "email": token_payload.get("email"),
+            "token_payload": token_payload
         }
         
     except Exception as e:
