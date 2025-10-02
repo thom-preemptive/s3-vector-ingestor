@@ -464,7 +464,7 @@ async def list_jobs(
             FilterExpression='user_id = :user_id',
             ExpressionAttributeValues={':user_id': current_user['user_id']}
         )
-        return response.get('Items', [])
+        return {"jobs": response.get('Items', [])}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
