@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Grid, Paper, Typography, Box, Chip } from '@mui/material';
+import { TrendingUp, Assignment, CheckCircle, Error, Schedule } from '@mui/icons-material';
+import apiService from '../services/api';
 
 interface Job {
     job_id: string;
@@ -47,25 +50,14 @@ const JobMonitoringDashboard: React.FC = () => {
 
     const fetchData = async () => {
         try {
-            const token = localStorage.getItem('access_token');
-            const headers = {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            };
-
-            const [jobsResponse, queueResponse] = await Promise.all([
-                fetch('/api/dashboard/jobs?limit=20', { headers }),
-                fetch('/api/dashboard/queues', { headers })
+            const [jobsData, queueData] = await Promise.all([
+                apiService.getDashboardJobs(20),
+                apiService.getQueueStats()
             ]);
-
-            if (jobsResponse.ok && queueResponse.ok) {
-                const jobsData = await jobsResponse.json();
-                const queueData = await queueResponse.json();
-                
-                setJobs(jobsData.jobs || []);
-                setQueueStats(queueData);
-                setLastUpdated(new Date());
-            }
+            
+            setJobs(jobsData.jobs || []);
+            setQueueStats(queueData);
+            setLastUpdated(new Date());
         } catch (error) {
             console.error('Error fetching monitoring data:', error);
         } finally {

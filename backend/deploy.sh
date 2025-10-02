@@ -53,7 +53,7 @@ fi
 
 echo ""
 echo "🔧 Step 1: Building SAM application..."
-sam build --use-container
+sam build
 
 echo ""
 echo "🚀 Step 2: Deploying to AWS..."
@@ -62,6 +62,7 @@ sam deploy \
     --capabilities CAPABILITY_IAM \
     --region "$AWS_REGION" \
     --parameter-overrides Environment="$ENVIRONMENT" \
+    --resolve-s3 \
     --no-confirm-changeset \
     --no-fail-on-empty-changeset
 

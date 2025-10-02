@@ -13,6 +13,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { Language as UrlIcon } from '@mui/icons-material';
+import apiService from '../services/api';
 
 interface URLScrapingPageProps {
   user?: any;
@@ -56,43 +57,29 @@ const URLScrapingPage: React.FC<URLScrapingPageProps> = ({ user }) => {
     try {
       const urlList = urls.split('\n').filter(url => url.trim());
       
-      // Check if we have a backend API configured
-      const apiUrl = process.env.REACT_APP_API_URL || '';
-      if (!apiUrl) {
-        throw new Error('Backend API not yet deployed. This is a frontend-only demo. Backend deployment coming soon!');
+      // Process each URL
+      const results = [];
+      for (const url of urlList) {
+        const result = await apiService.submitUrl({
+          url: url.trim(),
+          notes: notes,
+          approvalRequired: approvalRequired
+        });
+        results.push(result);
       }
       
-      const response = await fetch(`${apiUrl}/api/process/urls`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          urls: urlList,
-          user_id: 'current-user', // TODO: Get from auth context
-          job_name: jobName,
-          notes: notes,
-          approval_required: approvalRequired,
-        }),
+      setProcessResult({
+        success: true,
+        message: `Successfully submitted ${results.length} URL(s) for processing`,
+        results: results
       });
-
-      if (!response.ok) {
-        throw new Error('URL processing failed');
-      }
-
-      const result = await response.json();
-      setProcessResult(result);
 
       // Clear form on success
       setUrls('');
       setJobName('');
       setNotes('');
     } catch (err: any) {
-      if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
-        setError('Backend API not available. This is a frontend-only demo. Backend deployment coming soon!');
-      } else {
-        setError(err.message || 'An error occurred');
-      }
+      setError(err.message || 'An error occurred during URL submission');
     } finally {
       setProcessing(false);
     }

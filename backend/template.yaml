@@ -28,9 +28,25 @@ Resources:
       Runtime: python3.11
       Timeout: 30
       MemorySize: 1024
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: '*'
+        - S3CrudPolicy:
+            BucketName: '*'
+        - Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:CreateTable
+              - dynamodb:DescribeTable
+              - textract:*
+              - bedrock:*
+            Resource: '*'
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
+          COGNITO_USER_POOL_ID: us-east-1_Yk8Yt64uE
+          COGNITO_CLIENT_ID: 6hcundvt29da9ap8ji973h1pqq
+          S3_BUCKET: agent2-ingestor-bucket-us-east-1
       Events:
         ApiEvent:
           Type: Api

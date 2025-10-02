@@ -17,6 +17,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { CloudUpload as UploadIcon } from '@mui/icons-material';
+import apiService from '../services/api';
 
 interface UploadPageProps {
   user?: any;
@@ -79,27 +80,7 @@ const UploadPage: React.FC<UploadPageProps> = ({ user }) => {
       formData.append('notes', notes);
       formData.append('approval_required', approvalRequired.toString());
 
-      // Use environment variable for API URL, fallback to relative path for production
-      const apiUrl = process.env.REACT_APP_API_URL || '';
-      
-      // Check if we have a backend API configured
-      if (!apiUrl) {
-        throw new Error('Backend API not yet deployed. This is a frontend-only demo. Backend deployment coming soon!');
-      }
-      
-      const uploadEndpoint = `${apiUrl}/upload/pdf`;
-
-      const response = await fetch(uploadEndpoint, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Upload failed: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      const result = await response.json();
+      const result = await apiService.uploadDocument(formData);
       setUploadResult(result);
 
       // Clear form on success
@@ -107,11 +88,7 @@ const UploadPage: React.FC<UploadPageProps> = ({ user }) => {
       setJobName('');
       setNotes('');
     } catch (err: any) {
-      if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
-        setError('Backend API not available. This is a frontend-only demo. Backend deployment coming soon!');
-      } else {
-        setError(err.message || 'An error occurred');
-      }
+      setError(err.message || 'An error occurred during upload');
     } finally {
       setUploading(false);
     }
