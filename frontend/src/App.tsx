@@ -11,6 +11,7 @@ import UploadPage from './components/UploadPage';
 import URLScrapingPage from './components/URLScrapingPage';
 import JobsPage from './components/JobsPage';
 import ApprovalPage from './components/ApprovalPage';
+import DiagnosticPage from './components/DiagnosticPage';
 
 const theme = createTheme({
   palette: {
@@ -177,6 +178,7 @@ function App() {
                 <Route path="/url-scraping" element={<URLScrapingPage user={user} />} />
                 <Route path="/jobs" element={<JobsPage />} />
                 <Route path="/approvals" element={<ApprovalPage />} />
+                <Route path="/diagnostics" element={<DiagnosticPage />} />
               </Routes>
             </Layout>
           </Router>

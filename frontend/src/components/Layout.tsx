@@ -22,6 +22,7 @@ import {
   CheckCircle as ApprovalIcon,
   ExitToApp as SignOutIcon,
   Language as UrlIcon,
+  BugReport as DiagnosticIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import versionInfo from '../version.json';
@@ -54,6 +55,7 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
     { text: 'URL Scraping', icon: <UrlIcon />, path: '/url-scraping' },
     { text: 'Jobs', icon: <JobsIcon />, path: '/jobs' },
     { text: 'Approvals', icon: <ApprovalIcon />, path: '/approvals' },
+    { text: 'Diagnostics', icon: <DiagnosticIcon />, path: '/diagnostics' },
   ];
 
   const drawer = (
