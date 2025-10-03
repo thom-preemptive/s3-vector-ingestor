@@ -50,6 +50,7 @@ const DocumentViewerPage: React.FC = () => {
   const [document, setDocument] = useState<DocumentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showFullEmbeddings, setShowFullEmbeddings] = useState(false);
 
   useEffect(() => {
     if (documentId) {
@@ -301,29 +302,195 @@ const DocumentViewerPage: React.FC = () => {
             </Box>
           </AccordionSummary>
           <AccordionDetails>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                backgroundColor: '#f5f5f5',
-                maxHeight: '600px',
-                overflow: 'auto',
-                border: '1px solid #e0e0e0',
-              }}
-            >
-              <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-                Note: Large embedding arrays may take a moment to display
-              </Typography>
-              <pre style={{ 
-                margin: 0, 
-                whiteSpace: 'pre-wrap', 
-                wordBreak: 'break-word',
-                fontSize: '12px',
-                fontFamily: 'Monaco, Consolas, "Courier New", monospace'
-              }}>
-                {JSON.stringify(document.sidecar_data, null, 2)}
-              </pre>
-            </Paper>
+            <Box sx={{ p: 2 }}>
+              {/* Summary Statistics */}
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                        Embedding Information
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Model:</strong> {document.sidecar_data.embedding_model}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Dimensions:</strong> {document.sidecar_data.embedding_dimensions}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Created:</strong> {formatDate(document.sidecar_data.created_at)}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                        Processing Results
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Total Chunks:</strong> {document.sidecar_data.total_chunks}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Successful:</strong> {document.sidecar_data.successful_chunks}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Failed:</strong> {document.sidecar_data.failed_chunks}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {document.sidecar_data.chunking_strategy && (
+                  <Grid item xs={12} md={6}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                          Chunking Strategy
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Chunk Size:</strong> {document.sidecar_data.chunking_strategy.chunk_size} words
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Overlap:</strong> {document.sidecar_data.chunking_strategy.overlap_size} words
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Dynamic Sizing:</strong> {document.sidecar_data.chunking_strategy.dynamic_sizing ? 'Yes' : 'No'}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {document.sidecar_data.processing_statistics && (
+                  <Grid item xs={12} md={6}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                          Processing Statistics
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Original Words:</strong> {document.sidecar_data.processing_statistics.original_word_count?.toLocaleString()}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Avg Chunk Size:</strong> {document.sidecar_data.processing_statistics.average_chunk_size_words} words
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Processing Time:</strong> {document.sidecar_data.processing_statistics.total_embedding_time_seconds}s
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {document.sidecar_data.quality_metrics && (
+                  <Grid item xs={12}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                          Quality Metrics
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 4 }}>
+                          <Box>
+                            <Typography variant="body2">
+                              <strong>Success Rate:</strong> {document.sidecar_data.quality_metrics.success_rate}%
+                            </Typography>
+                          </Box>
+                          <Box>
+                            <Typography variant="body2">
+                              <strong>Chunk Utilization:</strong> {document.sidecar_data.quality_metrics.chunk_utilization}%
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+              </Grid>
+
+              {/* Chunk Preview */}
+              {document.sidecar_data.chunks && document.sidecar_data.chunks.length > 0 && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="h6" gutterBottom>
+                    Chunk Preview (First 3 chunks)
+                  </Typography>
+                  {document.sidecar_data.chunks.slice(0, 3).map((chunk: any, index: number) => (
+                    <Card key={index} variant="outlined" sx={{ mb: 2 }}>
+                      <CardContent>
+                        <Typography variant="subtitle2" color="primary" gutterBottom>
+                          Chunk {chunk.chunk_index} - ID: {chunk.chunk_id}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Text Preview:</strong> {chunk.text?.substring(0, 200)}...
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          <strong>Words:</strong> {chunk.metadata?.word_count} • 
+                          <strong> Tokens:</strong> {chunk.metadata?.estimated_tokens} • 
+                          <strong> Embedding Dimensions:</strong> {chunk.embedding?.length || 0}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {document.sidecar_data.chunks.length > 3 && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      Showing 3 of {document.sidecar_data.chunks.length} chunks. 
+                      Full embeddings contain {document.sidecar_data.chunks.length} chunks with {document.sidecar_data.embedding_dimensions}-dimensional vectors.
+                    </Alert>
+                  )}
+                </>
+              )}
+
+              {/* Full JSON Export Option */}
+              <Divider sx={{ my: 2 }} />
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowFullEmbeddings(!showFullEmbeddings)}
+                  startIcon={showFullEmbeddings ? <ExpandMoreIcon sx={{ transform: 'rotate(180deg)' }} /> : <ExpandMoreIcon />}
+                >
+                  {showFullEmbeddings ? 'Hide' : 'Show'} Full JSON (Warning: Large)
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => handleDownload('json')}
+                  startIcon={<DownloadIcon />}
+                >
+                  Download Full Sidecar JSON
+                </Button>
+              </Box>
+
+              {/* Full JSON Display (Hidden by default) */}
+              {showFullEmbeddings && (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    mt: 2,
+                    p: 2,
+                    backgroundColor: '#f5f5f5',
+                    maxHeight: '600px',
+                    overflow: 'auto',
+                    border: '1px solid #e0e0e0',
+                  }}
+                >
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    This displays {document.sidecar_data.chunks?.length || 0} chunks with full {document.sidecar_data.embedding_dimensions}-dimensional vectors. 
+                    This may slow down your browser.
+                  </Alert>
+                  <pre style={{ 
+                    margin: 0, 
+                    whiteSpace: 'pre-wrap', 
+                    wordBreak: 'break-word',
+                    fontSize: '11px',
+                    fontFamily: 'Monaco, Consolas, "Courier New", monospace'
+                  }}>
+                    {JSON.stringify(document.sidecar_data, null, 2)}
+                  </pre>
+                </Paper>
+              )}
+            </Box>
           </AccordionDetails>
         </Accordion>
       )}
