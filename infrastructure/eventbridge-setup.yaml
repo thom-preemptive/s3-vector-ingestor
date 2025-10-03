@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'agent2_ingestor - EventBridge Infrastructure for Async Processing'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    Description: 'Environment name'
+  
+  S3BucketName:
+    Type: String
+    Default: 'agent2-ingestor-bucket-us-east-1'
+    Description: 'S3 bucket for document storage'
+  
+  ProcessorLambdaArn:
+    Type: String
+    Description: 'ARN of the document processor Lambda function'
+
+Resources:
+  # EventBridge Custom Event Bus
+  Agent2IngestorEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub 'agent2-ingestor-events-${Environment}'
+      Description: 'Event bus for agent2_ingestor document processing'
+
+  # EventBridge Rule to trigger document processing
+  DocumentProcessingRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub 'agent2-ingestor-document-processing-${Environment}'
+      Description: 'Triggers document processing Lambda when files are uploaded'
+      EventBusName: !Ref Agent2IngestorEventBus
+      EventPattern:
+        source:
+          - 'agent2.ingestor'
+        detail-type:
+          - 'Document Processing Required'
+      State: ENABLED
+      Targets:
+        - Arn: !Ref ProcessorLambdaArn
+          Id: 'DocumentProcessorTarget'
+          RetryPolicy:
+            MaximumRetryAttempts: 2
+
+  # Permission for EventBridge to invoke the Lambda
+  EventBridgeInvokeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProcessorLambdaArn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt DocumentProcessingRule.Arn
+
+  # IAM Role for API Lambda to send events to EventBridge
+  EventBridgePutEventsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub 'agent2-ingestor-eventbridge-put-${Environment}'
+      Description: 'Allows Lambda to put events to EventBridge'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - events:PutEvents
+            Resource:
+              - !GetAtt Agent2IngestorEventBus.Arn
+
+Outputs:
+  EventBusName:
+    Description: 'Name of the EventBridge event bus'
+    Value: !Ref Agent2IngestorEventBus
+    Export:
+      Name: !Sub '${AWS::StackName}-EventBusName'
+  
+  EventBusArn:
+    Description: 'ARN of the EventBridge event bus'
+    Value: !GetAtt Agent2IngestorEventBus.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-EventBusArn'
+  
+  EventBridgePutEventsPolicyArn:
+    Description: 'ARN of IAM policy for putting events'
+    Value: !Ref EventBridgePutEventsPolicy
+    Export:
+      Name: !Sub '${AWS::StackName}-PutEventsPolicyArn'

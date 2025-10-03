@@ -35,6 +35,7 @@ security = HTTPBearer()
 from services.aws_services import S3Service, DynamoDBService, CognitoService
 from services.approval_service import ApprovalService
 from services.queue_service import JobQueueService, QueueType, JobPriority
+from services.orchestration_service import EventBridgeService
 
 # Import dashboard API
 from dashboard_api import router as dashboard_router
@@ -45,6 +46,7 @@ dynamodb_service = DynamoDBService()
 cognito_service = CognitoService()
 approval_service = ApprovalService()
 queue_service = JobQueueService()
+eventbridge_service = EventBridgeService()
 
 # Include dashboard router
 app.include_router(dashboard_router)
@@ -54,6 +56,7 @@ s3_client = boto3.client('s3', region_name='us-east-1')
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 textract_client = boto3.client('textract', region_name='us-east-1')
 bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
+lambda_client = boto3.client('lambda', region_name='us-east-1')
 
 # Environment variables
 S3_BUCKET = os.getenv("S3_BUCKET", "agent2-ingestor-bucket-us-east-1")
@@ -409,17 +412,21 @@ async def process_s3_uploaded_files(
 ):
     """
     Process files that were uploaded directly to S3 via presigned URLs.
-    This allows processing of large files that exceed API Gateway limits.
+    
+    Returns immediately with job_id. Processing happens asynchronously via EventBridge.
     """
     job_id = str(uuid.uuid4())
     
     try:
+        # Determine initial status based on approval requirement
+        initial_status = 'pending_approval' if request.approval_required else 'queued'
+        
         # Create job record in DynamoDB
         job_data = {
             'job_id': job_id,
             'user_id': current_user['user_id'],
             'job_name': request.job_name,
-            'status': 'processing',
+            'status': initial_status,
             'created_at': datetime.utcnow().isoformat(),
             'updated_at': datetime.utcnow().isoformat(),
             'total_documents': len(request.files),
@@ -430,51 +437,31 @@ async def process_s3_uploaded_files(
         
         await dynamodb_service.create_job(job_data)
         
-        # If approval is not required, process immediately
+        # If no approval required, send event to EventBridge for async processing
         if not request.approval_required:
-            # Download files from S3 and process
-            file_contents = []
-            filenames = []
+            # Prepare file information for EventBridge
+            files_info = [
+                {
+                    'file_key': f.file_key,
+                    'filename': f.filename
+                } 
+                for f in request.files
+            ]
             
-            for file_info in request.files:
-                try:
-                    response = s3_client.get_object(Bucket=S3_BUCKET, Key=file_info.file_key)
-                    file_contents.append(response['Body'].read())
-                    filenames.append(file_info.filename)
-                except Exception as e:
-                    raise HTTPException(status_code=500, detail=f"Failed to retrieve file from S3: {str(e)}")
-            
-            # Process documents
-            processing_result = await document_processor.process_job(
+            # Send event to EventBridge for async processing
+            await eventbridge_service.send_document_processing_event(
                 job_id=job_id,
-                files=file_contents,
-                filenames=filenames,
                 user_id=current_user['user_id'],
+                files=files_info,
                 job_name=request.job_name
             )
-            
-            # Update job status
-            await dynamodb_service.update_job_status(
-                job_id, 
-                'completed',
-                documents_processed=processing_result['successful_documents'],
-                processing_summary=f"Successfully processed {processing_result['successful_documents']} of {processing_result['total_documents']} documents"
-            )
-            
-            return {
-                "job_id": job_id,
-                "status": "completed", 
-                "files_count": len(request.files),
-                "processing_result": processing_result
-            }
-        else:
-            # Job created, awaiting approval
-            return {
-                "job_id": job_id,
-                "status": "pending_approval",
-                "files_count": len(request.files),
-                "message": "Job created successfully. Awaiting approval before processing."
-            }
+        
+        return {
+            "job_id": job_id,
+            "status": initial_status,
+            "files_count": len(request.files),
+            "message": "Job created successfully. Processing in background - check Jobs page for status."
+        }
     
     except HTTPException:
         raise
@@ -1180,6 +1167,136 @@ async def get_user_queue_jobs(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get user jobs: {str(e)}")
+
+# ===================================
+# Document Viewing and Search Endpoints
+# ===================================
+
+@app.get("/documents")
+async def list_documents(
+    limit: int = 50,
+    offset: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    List all documents with pagination.
+    Returns document metadata without full content.
+    """
+    try:
+        result = await s3_service.list_documents(limit=limit, offset=offset)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list documents: {str(e)}")
+
+@app.get("/documents/{document_id}")
+async def get_document(
+    document_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get complete document information including markdown content and sidecar data.
+    """
+    try:
+        document = await s3_service.get_document_by_id(document_id)
+        return document
+    except Exception as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to get document: {str(e)}")
+
+@app.get("/documents/search")
+async def search_documents(
+    q: str,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Search documents by filename, job name, or user ID.
+    Returns matching documents with metadata.
+    """
+    try:
+        if not q or len(q) < 2:
+            raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
+        
+        results = await s3_service.search_documents(query=q, limit=limit)
+        return {
+            "query": q,
+            "results": results,
+            "count": len(results)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to search documents: {str(e)}")
+
+@app.get("/documents/manifest")
+async def get_manifest(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get the complete document manifest with all metadata.
+    """
+    try:
+        manifest = await s3_service.get_manifest()
+        return manifest
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get manifest: {str(e)}")
+
+@app.get("/documents/stats")
+async def get_document_statistics(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get statistics about documents (total count, types, size, etc.)
+    """
+    try:
+        stats = await s3_service.get_manifest_statistics()
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
+
+@app.get("/documents/{document_id}/download")
+async def download_document(
+    document_id: str,
+    format: str = "markdown",
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Download document in specified format (markdown or json).
+    Returns file content for download.
+    """
+    try:
+        document = await s3_service.get_document_by_id(document_id)
+        
+        if format == "markdown":
+            if not document.get('markdown_content'):
+                raise HTTPException(status_code=404, detail="Markdown content not available")
+            
+            from fastapi.responses import Response
+            return Response(
+                content=document['markdown_content'],
+                media_type="text/markdown",
+                headers={
+                    "Content-Disposition": f"attachment; filename={document.get('filename', 'document')}.md"
+                }
+            )
+        
+        elif format == "json":
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                content=document,
+                headers={
+                    "Content-Disposition": f"attachment; filename={document.get('filename', 'document')}.json"
+                }
+            )
+        
+        else:
+            raise HTTPException(status_code=400, detail="Invalid format. Use 'markdown' or 'json'")
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to download document: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

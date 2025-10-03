@@ -40,6 +40,7 @@ Resources:
               - dynamodb:DescribeTable
               - textract:*
               - bedrock:*
+              - lambda:InvokeFunction
             Resource: '*'
       Environment:
         Variables:
@@ -47,6 +48,7 @@ Resources:
           COGNITO_USER_POOL_ID: us-east-1_Yk8Yt64uE
           COGNITO_CLIENT_ID: 6hcundvt29da9ap8ji973h1pqq
           S3_BUCKET: agent2-ingestor-bucket-us-east-1
+          EVENT_BUS_NAME: agent2-ingestor-events-dev
       Events:
         ApiEvent:
           Type: Api
@@ -91,3 +93,9 @@ Outputs:
     Value: !Ref Agent2IngestorApiGateway
     Export:
       Name: !Sub "${AWS::StackName}-ApiId"
+  
+  Agent2IngestorAPIArn:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt Agent2IngestorAPI.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-LambdaArn"

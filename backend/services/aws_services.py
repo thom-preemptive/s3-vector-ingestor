@@ -206,6 +206,119 @@ class S3Service:
         except Exception as e:
             validation_results['errors'].append(str(e))
             return validation_results
+    
+    async def get_document_content(self, s3_key: str) -> str:
+        """Retrieve document content from S3"""
+        try:
+            response = self.s3_client.get_object(Bucket=self.bucket_name, Key=s3_key)
+            return response['Body'].read().decode('utf-8')
+        except self.s3_client.exceptions.NoSuchKey:
+            raise Exception(f"Document not found: {s3_key}")
+        except Exception as e:
+            raise Exception(f"Failed to retrieve document: {str(e)}")
+    
+    async def get_sidecar_data(self, s3_key: str) -> Dict[str, Any]:
+        """Retrieve sidecar/vector data from S3"""
+        try:
+            response = self.s3_client.get_object(Bucket=self.bucket_name, Key=s3_key)
+            return json.loads(response['Body'].read().decode('utf-8'))
+        except self.s3_client.exceptions.NoSuchKey:
+            raise Exception(f"Sidecar not found: {s3_key}")
+        except Exception as e:
+            raise Exception(f"Failed to retrieve sidecar: {str(e)}")
+    
+    async def get_document_by_id(self, document_id: str) -> Dict[str, Any]:
+        """Get complete document information including content and sidecar"""
+        try:
+            manifest = await self.get_manifest()
+            documents = manifest.get('documents', [])
+            
+            # Find document by ID
+            document = next((d for d in documents if d.get('document_id') == document_id), None)
+            if not document:
+                raise Exception(f"Document not found: {document_id}")
+            
+            # Get markdown content
+            markdown_content = None
+            if document.get('markdown_s3_key'):
+                try:
+                    markdown_content = await self.get_document_content(document['markdown_s3_key'])
+                except Exception as e:
+                    print(f"Warning: Could not load markdown content: {e}")
+            
+            # Get sidecar data
+            sidecar_data = None
+            if document.get('sidecar_s3_key'):
+                try:
+                    sidecar_data = await self.get_sidecar_data(document['sidecar_s3_key'])
+                except Exception as e:
+                    print(f"Warning: Could not load sidecar data: {e}")
+            
+            return {
+                **document,
+                'markdown_content': markdown_content,
+                'sidecar_data': sidecar_data
+            }
+        except Exception as e:
+            raise Exception(f"Failed to get document: {str(e)}")
+    
+    async def list_documents(self, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """List documents with pagination"""
+        try:
+            manifest = await self.get_manifest()
+            documents = manifest.get('documents', [])
+            
+            # Sort by processed_at descending (newest first)
+            sorted_docs = sorted(
+                documents, 
+                key=lambda x: x.get('processed_at', ''), 
+                reverse=True
+            )
+            
+            # Apply pagination
+            paginated_docs = sorted_docs[offset:offset + limit]
+            
+            return {
+                'documents': paginated_docs,
+                'total': len(documents),
+                'limit': limit,
+                'offset': offset,
+                'has_more': (offset + limit) < len(documents)
+            }
+        except Exception as e:
+            raise Exception(f"Failed to list documents: {str(e)}")
+    
+    async def search_documents(self, query: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Search documents by filename, job name, or content metadata"""
+        try:
+            manifest = await self.get_manifest()
+            documents = manifest.get('documents', [])
+            
+            query_lower = query.lower()
+            matching_docs = []
+            
+            for doc in documents:
+                # Search in filename
+                if query_lower in doc.get('filename', '').lower():
+                    matching_docs.append({**doc, 'match_field': 'filename'})
+                    continue
+                
+                # Search in job name
+                if query_lower in doc.get('job_name', '').lower():
+                    matching_docs.append({**doc, 'match_field': 'job_name'})
+                    continue
+                
+                # Search in user_id
+                if query_lower in doc.get('user_id', '').lower():
+                    matching_docs.append({**doc, 'match_field': 'user_id'})
+                    continue
+            
+            # Sort by processed_at descending
+            matching_docs.sort(key=lambda x: x.get('processed_at', ''), reverse=True)
+            
+            return matching_docs[:limit]
+        except Exception as e:
+            raise Exception(f"Failed to search documents: {str(e)}")
 
 class DynamoDBService:
     def __init__(self):

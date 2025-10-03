@@ -41,7 +41,7 @@ class EventBridgeService:
             response = self.events_client.put_events(
                 Entries=[
                     {
-                        'Source': 'emergency.docs',
+                        'Source': 'agent2.ingestor',
                         'DetailType': 'Document Processing Required',
                         'Detail': json.dumps(event_detail),
                         'EventBusName': self.event_bus_name

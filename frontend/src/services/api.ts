@@ -331,6 +331,101 @@ export const apiService = {
         message: 'Approval update simulation successful'
       };
     }
+  },
+
+  // Document viewing and search endpoints
+  async listDocuments(limit = 50, offset = 0) {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_ENDPOINT}/documents?limit=${limit}&offset=${offset}`, {
+        headers
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error listing documents:', error);
+      throw error;
+    }
+  },
+
+  async getDocument(documentId: string) {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_ENDPOINT}/documents/${documentId}`, {
+        headers
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting document:', error);
+      throw error;
+    }
+  },
+
+  async searchDocuments(query: string, limit = 50) {
+    try {
+      const headers = await getAuthHeaders();
+      const encodedQuery = encodeURIComponent(query);
+      const response = await fetch(`${API_ENDPOINT}/documents/search?q=${encodedQuery}&limit=${limit}`, {
+        headers
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error searching documents:', error);
+      throw error;
+    }
+  },
+
+  async getDocumentStats() {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_ENDPOINT}/documents/stats`, {
+        headers
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting document stats:', error);
+      throw error;
+    }
+  },
+
+  async downloadDocument(documentId: string, format: 'markdown' | 'json'): Promise<Blob> {
+    try {
+      const headers = await getAuthHeaders();
+      // Remove Content-Type for file download
+      delete headers['Content-Type'];
+      
+      const response = await fetch(`${API_ENDPOINT}/documents/${documentId}/download?format=${format}`, {
+        headers
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.blob();
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      throw error;
+    }
   }
 };
 
