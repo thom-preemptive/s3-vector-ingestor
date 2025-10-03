@@ -230,6 +230,40 @@ from services.document_processor import DocumentProcessor
 # Initialize document processor
 document_processor = DocumentProcessor()
 
+# Get presigned URLs for direct S3 upload (for large files)
+@app.post("/upload/presigned-url")
+async def get_presigned_upload_url(
+    filename: str = Form(...),
+    content_type: str = Form("application/pdf"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Generate a presigned URL for direct upload to S3.
+    This bypasses API Gateway's 10MB limit.
+    """
+    try:
+        # Generate unique key for the file
+        file_key = f"uploads/{current_user['user_id']}/{uuid.uuid4()}/{filename}"
+        
+        # Generate presigned URL (valid for 15 minutes)
+        presigned_url = s3_client.generate_presigned_url(
+            'put_object',
+            Params={
+                'Bucket': S3_BUCKET,
+                'Key': file_key,
+                'ContentType': content_type
+            },
+            ExpiresIn=900  # 15 minutes
+        )
+        
+        return {
+            "upload_url": presigned_url,
+            "file_key": file_key,
+            "expires_in": 900
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Upload PDF files
 @app.post("/upload/pdf")
 async def upload_pdf(
@@ -350,6 +384,95 @@ async def upload_pdf(
                 "job_id": job_id,
                 "status": "pending_approval",
                 "files_count": len(files),
+                "message": "Job created successfully. Awaiting approval before processing."
+            }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Process files that were uploaded to S3 via presigned URL
+class S3UploadedFile(BaseModel):
+    file_key: str
+    filename: str
+
+class S3UploadJobRequest(BaseModel):
+    files: List[S3UploadedFile]
+    job_name: str
+    approval_required: bool = True
+
+@app.post("/upload/process-s3-files")
+async def process_s3_uploaded_files(
+    request: S3UploadJobRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Process files that were uploaded directly to S3 via presigned URLs.
+    This allows processing of large files that exceed API Gateway limits.
+    """
+    job_id = str(uuid.uuid4())
+    
+    try:
+        # Create job record in DynamoDB
+        job_data = {
+            'job_id': job_id,
+            'user_id': current_user['user_id'],
+            'job_name': request.job_name,
+            'status': 'processing',
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat(),
+            'total_documents': len(request.files),
+            'documents_processed': 0,
+            'approval_required': request.approval_required,
+            'approval_status': 'pending' if request.approval_required else 'approved'
+        }
+        
+        await dynamodb_service.create_job(job_data)
+        
+        # If approval is not required, process immediately
+        if not request.approval_required:
+            # Download files from S3 and process
+            file_contents = []
+            filenames = []
+            
+            for file_info in request.files:
+                try:
+                    response = s3_client.get_object(Bucket=S3_BUCKET, Key=file_info.file_key)
+                    file_contents.append(response['Body'].read())
+                    filenames.append(file_info.filename)
+                except Exception as e:
+                    raise HTTPException(status_code=500, detail=f"Failed to retrieve file from S3: {str(e)}")
+            
+            # Process documents
+            processing_result = await document_processor.process_job(
+                job_id=job_id,
+                files=file_contents,
+                filenames=filenames,
+                user_id=current_user['user_id'],
+                job_name=request.job_name
+            )
+            
+            # Update job status
+            await dynamodb_service.update_job_status(
+                job_id, 
+                'completed',
+                documents_processed=processing_result['successful_documents'],
+                processing_summary=f"Successfully processed {processing_result['successful_documents']} of {processing_result['total_documents']} documents"
+            )
+            
+            return {
+                "job_id": job_id,
+                "status": "completed", 
+                "files_count": len(request.files),
+                "processing_result": processing_result
+            }
+        else:
+            # Job created, awaiting approval
+            return {
+                "job_id": job_id,
+                "status": "pending_approval",
+                "files_count": len(request.files),
                 "message": "Job created successfully. Awaiting approval before processing."
             }
     

@@ -26,8 +26,8 @@ Resources:
       CodeUri: .
       Handler: lambda_handler.handler
       Runtime: python3.11
-      Timeout: 30
-      MemorySize: 1024
+      Timeout: 900  # 15 minutes for large file processing
+      MemorySize: 3008  # Increased for handling larger files
       Policies:
         - DynamoDBCrudPolicy:
             TableName: '*'
@@ -70,8 +70,14 @@ Resources:
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
+        AllowCredentials: false
       EndpointConfiguration:
         Type: REGIONAL
+      # Binary media types for file uploads
+      BinaryMediaTypes:
+        - 'multipart/form-data'
+        - 'application/pdf'
+        - 'application/octet-stream'
 
 Outputs:
   ApiGatewayUrl:

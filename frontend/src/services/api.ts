@@ -141,32 +141,97 @@ export const apiService = {
     }
   },
 
-  // Upload document
+  // Upload document using presigned S3 URLs (bypasses API Gateway 10MB limit)
   async uploadDocument(formData: FormData) {
     try {
-      console.log('uploadDocument: Starting upload to', `${API_ENDPOINT}/upload/pdf`);
+      console.log('uploadDocument: Starting upload process');
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
       console.log('uploadDocument: Token retrieved:', token ? 'Yes (length: ' + token.length + ')' : 'No');
       
-      const response = await fetch(`${API_ENDPOINT}/upload/pdf`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-          // Don't set Content-Type for FormData, let browser set it
-        },
-        body: formData
-      });
+      // Extract files and metadata from FormData
+      const files: File[] = [];
+      const jobName = formData.get('job_name') as string;
+      const approvalRequired = formData.get('approval_required') === 'true';
       
-      console.log('uploadDocument: Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('uploadDocument: Error response:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+      // Get all files from FormData
+      const fileEntries = formData.getAll('files');
+      for (const entry of fileEntries) {
+        if (entry instanceof File) {
+          files.push(entry);
+        }
       }
       
-      const result = await response.json();
+      console.log(`uploadDocument: Uploading ${files.length} files via S3 presigned URLs`);
+      
+      // Step 1: Get presigned URLs for each file
+      const uploadedFiles = [];
+      for (const file of files) {
+        // Get presigned URL
+        const presignedResponse = await fetch(`${API_ENDPOINT}/upload/presigned-url`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            filename: file.name,
+            content_type: file.type || 'application/pdf'
+          })
+        });
+        
+        if (!presignedResponse.ok) {
+          throw new Error(`Failed to get presigned URL: ${presignedResponse.status}`);
+        }
+        
+        const { upload_url, file_key } = await presignedResponse.json();
+        console.log(`uploadDocument: Got presigned URL for ${file.name}`);
+        
+        // Step 2: Upload file directly to S3
+        const s3Response = await fetch(upload_url, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': file.type || 'application/pdf'
+          },
+          body: file
+        });
+        
+        if (!s3Response.ok) {
+          throw new Error(`Failed to upload ${file.name} to S3: ${s3Response.status}`);
+        }
+        
+        console.log(`uploadDocument: Successfully uploaded ${file.name} to S3`);
+        
+        uploadedFiles.push({
+          file_key,
+          filename: file.name
+        });
+      }
+      
+      // Step 3: Trigger backend processing
+      console.log('uploadDocument: Triggering backend processing');
+      const processResponse = await fetch(`${API_ENDPOINT}/upload/process-s3-files`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          files: uploadedFiles,
+          job_name: jobName,
+          approval_required: approvalRequired
+        })
+      });
+      
+      console.log('uploadDocument: Process response status:', processResponse.status);
+      
+      if (!processResponse.ok) {
+        const errorText = await processResponse.text();
+        console.error('uploadDocument: Error response:', errorText);
+        throw new Error(`HTTP error! status: ${processResponse.status}, body: ${errorText}`);
+      }
+      
+      const result = await processResponse.json();
       console.log('uploadDocument: Success! Result:', result);
       return result;
     } catch (error) {
