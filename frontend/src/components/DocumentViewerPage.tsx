@@ -282,11 +282,22 @@ const DocumentViewerPage: React.FC = () => {
 
       {/* Sidecar Data */}
       {document.sidecar_data && (
-        <Accordion>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <StorageIcon sx={{ mr: 1 }} />
-              <Typography variant="h6">Vector Sidecar Data</Typography>
+        <Accordion sx={{ mb: 3 }}>
+          <AccordionSummary 
+            expandIcon={<ExpandMoreIcon />}
+            aria-controls="sidecar-content"
+            id="sidecar-header"
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+              <StorageIcon sx={{ color: 'primary.main' }} />
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h6">Vector Sidecar Data</Typography>
+                <Typography variant="caption" color="textSecondary">
+                  {document.sidecar_data.total_chunks || 0} chunks • 
+                  {document.sidecar_data.embedding_model || 'Unknown model'} • 
+                  {document.sidecar_data.quality_metrics?.success_rate || 0}% success rate
+                </Typography>
+              </Box>
             </Box>
           </AccordionSummary>
           <AccordionDetails>
@@ -295,11 +306,21 @@ const DocumentViewerPage: React.FC = () => {
               sx={{
                 p: 2,
                 backgroundColor: '#f5f5f5',
-                maxHeight: '500px',
+                maxHeight: '600px',
                 overflow: 'auto',
+                border: '1px solid #e0e0e0',
               }}
             >
-              <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                Note: Large embedding arrays may take a moment to display
+              </Typography>
+              <pre style={{ 
+                margin: 0, 
+                whiteSpace: 'pre-wrap', 
+                wordBreak: 'break-word',
+                fontSize: '12px',
+                fontFamily: 'Monaco, Consolas, "Courier New", monospace'
+              }}>
                 {JSON.stringify(document.sidecar_data, null, 2)}
               </pre>
             </Paper>
