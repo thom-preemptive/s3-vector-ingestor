@@ -1171,38 +1171,7 @@ async def get_user_queue_jobs(
 # ===================================
 # Document Viewing and Search Endpoints
 # ===================================
-
-@app.get("/documents")
-async def list_documents(
-    limit: int = 50,
-    offset: int = 0,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    List all documents with pagination.
-    Returns document metadata without full content.
-    """
-    try:
-        result = await s3_service.list_documents(limit=limit, offset=offset)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list documents: {str(e)}")
-
-@app.get("/documents/{document_id}")
-async def get_document(
-    document_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Get complete document information including markdown content and sidecar data.
-    """
-    try:
-        document = await s3_service.get_document_by_id(document_id)
-        return document
-    except Exception as e:
-        if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get document: {str(e)}")
+# NOTE: Order matters! Most specific routes must come first
 
 @app.get("/documents/search")
 async def search_documents(
@@ -1297,6 +1266,38 @@ async def download_document(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to download document: {str(e)}")
+
+@app.get("/documents/{document_id}")
+async def get_document(
+    document_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get complete document information including markdown content and sidecar data.
+    """
+    try:
+        document = await s3_service.get_document_by_id(document_id)
+        return document
+    except Exception as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to get document: {str(e)}")
+
+@app.get("/documents")
+async def list_documents(
+    limit: int = 50,
+    offset: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    List all documents with pagination.
+    Returns document metadata without full content.
+    """
+    try:
+        result = await s3_service.list_documents(limit=limit, offset=offset)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list documents: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
