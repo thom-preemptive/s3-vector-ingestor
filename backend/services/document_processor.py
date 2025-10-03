@@ -473,7 +473,7 @@ class DocumentProcessor:
             return '\n'.join(chunk for chunk in chunks if chunk)
     
     def _text_to_markdown(self, text_content: str, source_identifier: str, title: str = None) -> str:
-        """Convert text content to markdown format"""
+        """Convert text content to clean markdown format with enhanced cleaning"""
         try:
             # Create markdown header
             markdown_lines = []
@@ -493,44 +493,266 @@ class DocumentProcessor:
             markdown_lines.append("---")
             markdown_lines.append("")
             
-            # Add main content
+            # Add main content with enhanced cleaning
             markdown_lines.append("## Content")
             markdown_lines.append("")
             
-            # Clean and format the text content
-            cleaned_content = self._clean_text_content(text_content)
+            # Clean and format the text content with all enhancements
+            cleaned_content = self._clean_and_format_text(text_content)
             markdown_lines.append(cleaned_content)
             
             return '\n'.join(markdown_lines)
             
         except Exception as e:
+            print(f"Error in text_to_markdown: {str(e)}")
             # Fallback to simple format
             return f"# Document: {source_identifier}\n\n*Processed on: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC*\n\n---\n\n{text_content}"
     
-    def _clean_text_content(self, text: str) -> str:
-        """Clean and normalize text content"""
+    def _clean_and_format_text(self, text: str) -> str:
+        """Enhanced text cleaning with header/footer removal, bullet normalization, and formatting cleanup"""
         try:
-            # Remove excessive whitespace
+            # Step 1: Remove page markers
+            text = re.sub(r'\n\n--- Page \d+ ---\n\n', '\n\n', text)
+            
+            # Step 2: Split into lines for processing
             lines = text.split('\n')
+            
+            # Step 3: Detect and remove repeated headers/footers
+            lines = self._remove_repeated_headers_footers(lines)
+            
+            # Step 4: Clean each line
             cleaned_lines = []
+            prev_line_blank = False
             
             for line in lines:
                 line = line.strip()
-                if line:
-                    # Remove excessive spaces
-                    line = ' '.join(line.split())
-                    cleaned_lines.append(line)
-                elif cleaned_lines and cleaned_lines[-1]:  # Add blank line only if last line wasn't blank
-                    cleaned_lines.append('')
+                
+                # Skip empty lines but preserve paragraph breaks
+                if not line:
+                    if not prev_line_blank and cleaned_lines:
+                        cleaned_lines.append('')
+                        prev_line_blank = True
+                    continue
+                
+                # Remove social media links and common footers
+                if self._is_social_link_or_footer(line):
+                    continue
+                
+                # Normalize bullet points
+                line = self._normalize_bullets(line)
+                
+                # Detect and format headings
+                line = self._detect_and_format_heading(line)
+                
+                # Remove excessive spaces
+                line = ' '.join(line.split())
+                
+                # Skip very short lines that are likely artifacts (unless they're bullets or headings)
+                if len(line) < 3 and not line.startswith(('#', '-', '*', '•')):
+                    continue
+                
+                cleaned_lines.append(line)
+                prev_line_blank = False
             
-            # Remove trailing blank lines
+            # Step 5: Remove trailing blank lines
             while cleaned_lines and not cleaned_lines[-1]:
                 cleaned_lines.pop()
             
-            return '\n'.join(cleaned_lines)
+            # Step 6: Fix spacing around headings
+            result = self._fix_heading_spacing(cleaned_lines)
+            
+            return '\n'.join(result)
+            
+        except Exception as e:
+            print(f"Error in clean_and_format_text: {str(e)}")
+            return text
+    
+    def _remove_repeated_headers_footers(self, lines: List[str]) -> List[str]:
+        """Detect and remove repeated headers/footers that appear on multiple pages"""
+        try:
+            if len(lines) < 20:  # Too short to have meaningful patterns
+                return lines
+            
+            # Count occurrences of each line
+            line_counts = {}
+            for line in lines:
+                stripped = line.strip()
+                if stripped and len(stripped) > 5:  # Ignore very short lines
+                    line_counts[stripped] = line_counts.get(stripped, 0) + 1
+            
+            # Find lines that appear multiple times (potential headers/footers)
+            # But not too many times (could be legitimate repeated content)
+            repeated_lines = {
+                line for line, count in line_counts.items()
+                if 3 <= count <= len(lines) / 10  # Appears 3+ times but not in >10% of lines
+                and self._looks_like_header_footer(line)
+            }
+            
+            # Remove these repeated lines
+            filtered_lines = []
+            for line in lines:
+                if line.strip() not in repeated_lines:
+                    filtered_lines.append(line)
+            
+            return filtered_lines
             
         except Exception:
-            return text
+            return lines
+    
+    def _looks_like_header_footer(self, line: str) -> bool:
+        """Check if a line looks like a header or footer"""
+        line_lower = line.lower()
+        
+        # Common header/footer patterns
+        patterns = [
+            r'^\d+$',  # Just a page number
+            r'^page \d+',  # "Page 1", "Page 2"
+            r'^\d+ \| ',  # "1 | Something"
+            r' \| \d+$',  # "Something | 1"
+            r'^chapter \d+',
+            r'©.*\d{4}',  # Copyright notices
+            r'^https?://',  # URLs
+            r'^www\.',  # URLs
+            r'@.*\.(com|org|net|gov)',  # Email addresses
+        ]
+        
+        for pattern in patterns:
+            if re.search(pattern, line_lower):
+                return True
+        
+        # Check for common footer words
+        footer_indicators = [
+            'copyright', 'all rights reserved', 'confidential',
+            'proprietary', 'internal use only', 'draft'
+        ]
+        
+        if any(indicator in line_lower for indicator in footer_indicators):
+            if len(line.split()) < 15:  # Short lines with these words
+                return True
+        
+        return False
+    
+    def _is_social_link_or_footer(self, line: str) -> bool:
+        """Check if line is a social media link or common footer element"""
+        line_lower = line.lower()
+        
+        # Social media patterns
+        social_patterns = [
+            r'facebook\.com',
+            r'twitter\.com',
+            r'linkedin\.com',
+            r'instagram\.com',
+            r'youtube\.com',
+            r'@\w+',  # Twitter handles
+            r'\bf\b.*\bt\b.*\bin\b',  # F T IN (social icons as text)
+        ]
+        
+        for pattern in social_patterns:
+            if re.search(pattern, line_lower):
+                return True
+        
+        # Common footer phrases
+        footer_phrases = [
+            'follow us', 'connect with us', 'visit us at',
+            'for more information', 'contact us',
+            'all rights reserved', 'privacy policy', 'terms of service'
+        ]
+        
+        if any(phrase in line_lower for phrase in footer_phrases):
+            if len(line.split()) < 20:  # Short promotional lines
+                return True
+        
+        return False
+    
+    def _normalize_bullets(self, line: str) -> str:
+        """Normalize different bullet point styles to markdown format"""
+        # Common bullet characters
+        bullet_chars = ['•', '◦', '▪', '▫', '‣', '⁃', '∙', '○', '●', '■', '□', '►', '▸']
+        
+        # Replace various bullet characters with markdown dash
+        for char in bullet_chars:
+            if line.startswith(char):
+                line = '-' + line[1:]
+                break
+        
+        # Handle numbered lists with various formats
+        # "1." or "1)" or "(1)" -> "1."
+        line = re.sub(r'^(\d+)\)', r'\1.', line)
+        line = re.sub(r'^\((\d+)\)', r'\1.', line)
+        
+        # Handle lettered lists
+        # "a." or "a)" or "(a)" -> "a."
+        line = re.sub(r'^([a-z])\)', r'\1.', line)
+        line = re.sub(r'^\(([a-z])\)', r'\1.', line)
+        
+        # Ensure proper spacing after bullets and numbers
+        line = re.sub(r'^(-|\*)\s*', r'\1 ', line)
+        line = re.sub(r'^(\d+\.)\s*', r'\1 ', line)
+        line = re.sub(r'^([a-z]\.)\s*', r'\1 ', line)
+        
+        return line
+    
+    def _detect_and_format_heading(self, line: str) -> str:
+        """Detect lines that should be headings and format them as markdown headers"""
+        # Skip if already a markdown heading
+        if line.startswith('#'):
+            return line
+        
+        # Skip bullets and numbered lists
+        if re.match(r'^[-*•]\s', line) or re.match(r'^\d+\.\s', line):
+            return line
+        
+        # All caps lines (potential headings)
+        if line.isupper() and len(line.split()) <= 10:
+            # Convert to title case and make it a heading
+            words = line.split()
+            if len(words) >= 2:  # At least 2 words
+                return f"### {line.title()}"
+        
+        # Lines ending with colon (section headers)
+        if line.endswith(':') and len(line.split()) <= 8 and len(line) > 10:
+            # Remove colon and make it a heading
+            return f"### {line[:-1]}"
+        
+        # Common section keywords
+        heading_keywords = [
+            'introduction', 'overview', 'background', 'summary',
+            'conclusion', 'recommendations', 'references', 'appendix',
+            'executive summary', 'table of contents', 'abstract',
+            'methodology', 'results', 'discussion', 'acknowledgments'
+        ]
+        
+        line_lower = line.lower()
+        if any(line_lower.startswith(keyword) for keyword in heading_keywords):
+            if len(line.split()) <= 6:  # Short enough to be a heading
+                return f"### {line}"
+        
+        return line
+    
+    def _fix_heading_spacing(self, lines: List[str]) -> List[str]:
+        """Ensure proper spacing around headings"""
+        result = []
+        prev_was_heading = False
+        
+        for i, line in enumerate(lines):
+            is_heading = line.startswith('#')
+            
+            # Add blank line before heading (unless it's the first line)
+            if is_heading and result and result[-1]:
+                result.append('')
+            
+            result.append(line)
+            
+            # Add blank line after heading (unless next line is blank or another heading)
+            if is_heading and i < len(lines) - 1:
+                next_line = lines[i + 1] if i + 1 < len(lines) else ''
+                if next_line and not next_line.startswith('#'):
+                    # Will be added naturally by next iteration
+                    pass
+            
+            prev_was_heading = is_heading
+        
+        return result
     
     async def _generate_vector_sidecar(self, text_content: str, source_identifier: str) -> Dict[str, Any]:
         """Generate optimized vector embeddings sidecar file for AWS Bedrock"""
