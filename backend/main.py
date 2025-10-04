@@ -69,6 +69,7 @@ class DocumentRequest(BaseModel):
     user_id: str
     job_name: str
     approval_required: bool = True
+    notes: Optional[str] = None
 
 class JobStatus(BaseModel):
     job_id: str
@@ -359,6 +360,7 @@ async def upload_pdf(
     files: List[UploadFile] = File(...),
     job_name: str = Form(...),
     approval_required: bool = Form(True),
+    notes: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user)
 ):
     job_id = str(uuid.uuid4())
@@ -375,7 +377,8 @@ async def upload_pdf(
             'total_documents': len(files),
             'documents_processed': 0,
             'approval_required': approval_required,
-            'approval_status': 'pending' if approval_required else 'approved'
+            'approval_status': 'pending' if approval_required else 'approved',
+            'notes': notes
         }
         
         await dynamodb_service.create_job(job_data)
@@ -581,7 +584,8 @@ async def process_urls(
             'total_documents': len(url_strings),
             'documents_processed': 0,
             'approval_required': request.approval_required,
-            'approval_status': 'pending' if request.approval_required else 'approved'
+            'approval_status': 'pending' if request.approval_required else 'approved',
+            'notes': request.notes
         }
         
         await dynamodb_service.create_job(job_data)
