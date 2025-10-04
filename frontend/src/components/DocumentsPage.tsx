@@ -37,6 +37,7 @@ import {
 } from '@mui/icons-material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getCurrentUser } from 'aws-amplify/auth';
 import api from '../services/api';
 
 interface Document {
@@ -82,6 +83,9 @@ const DocumentsPage: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
 
+  // User email mapping
+  const [userEmails, setUserEmails] = useState<Record<string, string>>({});
+
   useEffect(() => {
     loadDocuments();
     loadStats();
@@ -104,11 +108,38 @@ const DocumentsPage: React.FC = () => {
       
       setDocuments(filteredDocuments);
       setTotalPages(Math.ceil(filteredDocuments.length / docsPerPage));
+
+      // Load user emails for the documents
+      await loadUserEmails(filteredDocuments);
     } catch (err: any) {
       console.error('Failed to load documents:', err);
       setError(err.message || 'Failed to load documents');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUserEmails = async (docs: Document[]) => {
+    const uniqueUserIds = Array.from(new Set(docs.map(doc => doc.user_id)));
+    
+    for (const userId of uniqueUserIds) {
+      if (!userEmails[userId]) {
+        try {
+          const currentUser = await getCurrentUser();
+          if (currentUser.userId === userId) {
+            const email = currentUser.signInDetails?.loginId || userId;
+            setUserEmails(prev => ({ ...prev, [userId]: email }));
+          } else {
+            // For other users, show truncated ID
+            const truncatedId = userId.length > 8 ? `${userId.substring(0, 8)}...` : userId;
+            setUserEmails(prev => ({ ...prev, [userId]: truncatedId }));
+          }
+        } catch (error) {
+          // If we can't get current user, just show truncated ID
+          const truncatedId = userId.length > 8 ? `${userId.substring(0, 8)}...` : userId;
+          setUserEmails(prev => ({ ...prev, [userId]: truncatedId }));
+        }
+      }
     }
   };
 
@@ -251,7 +282,7 @@ const DocumentsPage: React.FC = () => {
       width: 250,
       sortable: true,
       renderCell: (params) => (
-        <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
           <Typography
             variant="body2"
             sx={{
@@ -269,7 +300,7 @@ const DocumentsPage: React.FC = () => {
               label={`Match: ${params.row.match_field}`}
               size="small"
               color="primary"
-              sx={{ mt: 0.5 }}
+              sx={{ mt: 0.5, ml: 1 }}
             />
           )}
         </Box>
@@ -294,6 +325,7 @@ const DocumentsPage: React.FC = () => {
       headerName: 'User',
       width: 150,
       sortable: true,
+      renderCell: (params) => userEmails[params.value] || 'Loading...',
     },
     {
       field: 'actions',
@@ -441,6 +473,12 @@ const DocumentsPage: React.FC = () => {
               },
               '& .MuiDataGrid-row:hover': {
                 backgroundColor: 'action.hover',
+              },
+              '& .MuiDataGrid-cell': {
+                padding: '8px 16px',
+              },
+              '& .MuiDataGrid-row': {
+                minHeight: '48px !important',
               },
             }}
           />
