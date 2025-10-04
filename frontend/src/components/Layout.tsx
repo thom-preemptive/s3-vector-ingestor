@@ -29,7 +29,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import versionInfo from '../version.json';
 
-const drawerWidth = 240;
+const drawerWidth = 225;
 
 interface LayoutProps {
   user: any;
