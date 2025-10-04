@@ -24,6 +24,7 @@ import {
   Language as UrlIcon,
   BugReport as DiagnosticIcon,
   Description as DescriptionIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import versionInfo from '../version.json';
@@ -52,11 +53,12 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
 
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-    { text: 'Upload Documents', icon: <UploadIcon />, path: '/upload' },
-    { text: 'URL Scraping', icon: <UrlIcon />, path: '/url-scraping' },
+    { text: 'Upload Files', icon: <UploadIcon />, path: '/upload' },
+    { text: 'Scrape URL', icon: <UrlIcon />, path: '/url-scraping' },
     { text: 'Jobs', icon: <JobsIcon />, path: '/jobs' },
     { text: 'Documents', icon: <DescriptionIcon />, path: '/documents' },
     { text: 'Approvals', icon: <ApprovalIcon />, path: '/approvals' },
+    { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
     { text: 'Diagnostics', icon: <DiagnosticIcon />, path: '/diagnostics' },
   ];
 
@@ -83,6 +85,12 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
             <ListItemButton
               selected={location.pathname === item.path}
               onClick={() => navigate(item.path)}
+              sx={{
+                py: 1, // Reduce vertical padding by 50%
+                '& .MuiListItemIcon-root': {
+                  minWidth: '32px', // Reduce icon spacing by 50%
+                },
+              }}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
@@ -150,7 +158,7 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Agent2 Document Ingestor
+            S3 Vector Store Ingestor
           </Typography>
           {/* Display user email in top right */}
           <Typography variant="body2" sx={{ 

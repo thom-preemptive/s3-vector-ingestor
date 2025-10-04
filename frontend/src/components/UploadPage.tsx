@@ -97,7 +97,7 @@ const UploadPage: React.FC<UploadPageProps> = ({ user }) => {
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto' }}>
       <Typography variant="h4" gutterBottom>
-        Upload Documents
+        Upload Files
       </Typography>
       
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
@@ -232,7 +232,7 @@ const UploadPage: React.FC<UploadPageProps> = ({ user }) => {
           disabled={uploading || files.length === 0 || !jobName.trim()}
           startIcon={uploading ? <CircularProgress size={20} /> : <UploadIcon />}
         >
-          {uploading ? 'Uploading...' : 'Upload Documents'}
+          {uploading ? 'Uploading...' : 'Upload Files'}
         </Button>
       </Box>
     </Box>

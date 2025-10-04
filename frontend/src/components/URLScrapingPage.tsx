@@ -90,7 +90,7 @@ const URLScrapingPage: React.FC<URLScrapingPageProps> = ({ user }) => {
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto' }}>
       <Typography variant="h4" gutterBottom>
-        URL Scraping
+        Scrape URL
       </Typography>
       
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>

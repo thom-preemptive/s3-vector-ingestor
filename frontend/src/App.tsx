@@ -14,6 +14,7 @@ import ApprovalPage from './components/ApprovalPage';
 import DiagnosticPage from './components/DiagnosticPage';
 import DocumentsPage from './components/DocumentsPage';
 import DocumentViewerPage from './components/DocumentViewerPage';
+import SettingsPage from './components/SettingsPage';
 
 const theme = createTheme({
   palette: {
@@ -180,6 +181,7 @@ function App() {
                 <Route path="/url-scraping" element={<URLScrapingPage user={user} />} />
                 <Route path="/jobs" element={<JobsPage />} />
                 <Route path="/approvals" element={<ApprovalPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/diagnostics" element={<DiagnosticPage />} />
                 <Route path="/documents" element={<DocumentsPage />} />
                 <Route path="/documents/:documentId" element={<DocumentViewerPage />} />
