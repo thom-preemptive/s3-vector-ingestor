@@ -148,7 +148,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 # Dashboard Statistics Endpoints
 @app.get("/dashboard/stats")
-async def get_dashboard_stats():  # Temporarily removed authentication for testing
+async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     """Get dashboard statistics (total jobs, completed, pending, errors)"""
     try:
         # Get all jobs from DynamoDB
@@ -173,8 +173,9 @@ async def get_dashboard_stats():  # Temporarily removed authentication for testi
 
 @app.get("/dashboard/recent-jobs")
 async def get_recent_jobs(
-    limit: int = 10
-):  # Temporarily removed authentication for testing
+    limit: int = 10,
+    current_user: dict = Depends(get_current_user)
+):
     """Get recent jobs for dashboard"""
     try:
         # Get all jobs and sort by created date
