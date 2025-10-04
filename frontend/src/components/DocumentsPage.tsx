@@ -30,7 +30,7 @@ import {
   PictureAsPdf as PdfIcon,
   Language as LanguageIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 
 interface Document {
@@ -59,6 +59,7 @@ interface DocumentStats {
 
 const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +74,7 @@ const DocumentsPage: React.FC = () => {
     loadDocuments();
     loadStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, searchParams]);
 
   const loadDocuments = async () => {
     try {
@@ -81,8 +82,16 @@ const DocumentsPage: React.FC = () => {
       setError(null);
       const offset = (page - 1) * docsPerPage;
       const data = await api.listDocuments(docsPerPage, offset);
-      setDocuments(data.documents);
-      setTotalPages(Math.ceil(data.total / docsPerPage));
+      
+      // Filter by job if job parameter is present
+      const jobFilter = searchParams.get('job');
+      let filteredDocuments = data.documents;
+      if (jobFilter) {
+        filteredDocuments = data.documents.filter((doc: Document) => doc.job_id === jobFilter);
+      }
+      
+      setDocuments(filteredDocuments);
+      setTotalPages(Math.ceil(filteredDocuments.length / docsPerPage));
     } catch (err: any) {
       console.error('Failed to load documents:', err);
       setError(err.message || 'Failed to load documents');
@@ -171,7 +180,7 @@ const DocumentsPage: React.FC = () => {
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
-        Documents
+        {searchParams.get('job') ? `Documents from Job ${searchParams.get('job')}` : 'Documents'}
       </Typography>
 
       {/* Statistics Cards */}

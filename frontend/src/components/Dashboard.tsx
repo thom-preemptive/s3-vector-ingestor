@@ -231,7 +231,7 @@ const Dashboard: React.FC = () => {
                         <Button 
                           variant="outlined" 
                           size="small"
-                          onClick={() => navigate(`/documents/${job.id}`)}
+                          onClick={() => navigate(`/documents?job=${job.id}`)}
                         >
                           View Details
                         </Button>
