@@ -188,7 +188,7 @@ const Dashboard: React.FC = () => {
 
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Recent Jobs
+          Recent Jobs (last 5)
         </Typography>
         {recentJobs.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -208,7 +208,7 @@ const Dashboard: React.FC = () => {
             {recentJobs.map((job) => (
               <Grid item xs={12} key={job.id}>
                 <Card variant="outlined">
-                  <CardContent>
+                  <CardContent sx={{ py: 1.5 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         {getStatusIcon(job.status)}
@@ -243,6 +243,30 @@ const Dashboard: React.FC = () => {
             ))}
           </Grid>
         )}
+        <Box sx={{ mt: 2, textAlign: 'left' }}>
+          <Typography variant="body2" color="text.secondary">
+            For additional information, see the{' '}
+            <Button
+              variant="text"
+              sx={{
+                p: 0,
+                minWidth: 'auto',
+                fontWeight: 'bold',
+                fontSize: 'inherit',
+                textTransform: 'none',
+                verticalAlign: 'baseline',
+                '&:hover': {
+                  backgroundColor: 'transparent',
+                  textDecoration: 'underline',
+                }
+              }}
+              onClick={() => navigate('/jobs')}
+            >
+              Jobs
+            </Button>{' '}
+            page
+          </Typography>
+        </Box>
       </Paper>
     </Box>
   );
