@@ -333,7 +333,12 @@ const DocumentsPage: React.FC = () => {
       field: 'actions',
       headerName: '',
       width: 60,
+      minWidth: 60,
+      maxWidth: 60,
+      resizable: false,
       sortable: false,
+      align: 'right',
+      headerAlign: 'right',
       renderCell: (params) => (
         <IconButton
           size="small"
