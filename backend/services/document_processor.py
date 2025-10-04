@@ -22,6 +22,51 @@ class DocumentProcessor:
         self.bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
         self.bucket_name = os.getenv('S3_BUCKET', 'agent2-ingestor-bucket-us-east-1')
     
+    def clean_markdown_content(self, content: str) -> str:
+        """
+        Clean extracted markdown content by removing TOC artifacts and formatting noise.
+        """
+        lines = content.split('\n')
+        cleaned_lines = []
+        skip_toc = False
+        in_toc_section = False
+        
+        for line in lines:
+            # Detect TOC sections by excessive dots and page numbers
+            if re.search(r'\.{10,}', line) and re.search(r'\d+$', line.strip()):
+                skip_toc = True
+                continue
+            elif skip_toc and line.strip() and not line.startswith('#'):
+                # Continue skipping until we hit a proper header or meaningful content
+                continue
+            elif line.startswith('#') and skip_toc:
+                skip_toc = False
+            
+            # Skip lines that are just TOC headers
+            if re.match(r'^Table of Contents', line.strip(), re.IGNORECASE):
+                in_toc_section = True
+                continue
+            elif in_toc_section and re.match(r'^[^\w#]*$', line.strip()):
+                # Skip empty or whitespace-only lines in TOC
+                continue
+            elif in_toc_section and line.startswith('#'):
+                # Exit TOC section when we hit a real header
+                in_toc_section = False
+            
+            # Clean up formatting artifacts
+            line = re.sub(r'\.{4,}', '', line)  # Remove excessive dots
+            line = re.sub(r'\s+', ' ', line)  # Normalize whitespace
+            line = line.rstrip()  # Remove trailing spaces
+            
+            # Skip lines that are just page numbers or TOC artifacts
+            if re.match(r'^\s*\d+\s*$', line) or re.match(r'^\s*[ivxlcd]+\s*$', line.lower()):
+                continue
+            
+            if line.strip():  # Only keep non-empty lines
+                cleaned_lines.append(line)
+        
+        return '\n'.join(cleaned_lines)
+    
     async def process_job(self, job_id: str, files: List[bytes] = None, 
                          filenames: List[str] = None, urls: List[str] = None,
                          user_id: str = None, job_name: str = None) -> Dict[str, Any]:
@@ -265,6 +310,9 @@ class DocumentProcessor:
             
             if not text_content.strip():
                 raise Exception("No text could be extracted from PDF")
+            
+            # Clean the extracted text content
+            text_content = self.clean_markdown_content(text_content)
             
             # Convert to markdown
             markdown_content = self._text_to_markdown(text_content, filename)
