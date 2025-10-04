@@ -151,8 +151,6 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     """Get dashboard statistics (total jobs, completed, pending, errors)"""
     try:
-        print(f"DEBUG: Dashboard stats for user: {current_user.get('user_id', 'unknown')}")
-        
         # Get user's jobs from DynamoDB (filter by current user)
         table = dynamodb.Table(DYNAMODB_TABLE)
         response = table.scan(
@@ -161,21 +159,11 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         )
         user_jobs = response.get('Items', [])
         
-        print(f"DEBUG: Found {len(user_jobs)} jobs for user")
-        
         # Count jobs by status
         total_jobs = len(user_jobs)
         completed_jobs = sum(1 for job in user_jobs if job.get('status') == 'completed')
         pending_jobs = sum(1 for job in user_jobs if job.get('status') in ['queued', 'processing'])
         error_jobs = sum(1 for job in user_jobs if job.get('status') == 'failed')
-        
-        print(f"DEBUG: Stats - Total: {total_jobs}, Completed: {completed_jobs}, Pending: {pending_jobs}, Error: {error_jobs}")
-        
-        # Debug: show all job statuses
-        for job in user_jobs:
-            status = job.get('status', 'unknown')
-            job_name = job.get('job_name', 'unknown')
-            print(f"DEBUG: Job '{job_name}' has status '{status}'")
         
         return {
             "total_jobs": total_jobs,
