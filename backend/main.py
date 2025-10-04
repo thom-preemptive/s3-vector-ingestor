@@ -146,6 +146,87 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+# Dashboard Statistics Endpoints
+@app.get("/dashboard/stats")
+async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
+    """Get dashboard statistics (total jobs, completed, pending, errors)"""
+    try:
+        # Get all jobs from DynamoDB
+        all_jobs = await s3_service.get_all_jobs()
+        
+        # Count jobs by status
+        total_jobs = len(all_jobs)
+        completed_jobs = sum(1 for job in all_jobs if job.get('status') == 'completed')
+        pending_jobs = sum(1 for job in all_jobs if job.get('status') in ['queued', 'processing'])
+        error_jobs = sum(1 for job in all_jobs if job.get('status') == 'failed')
+        
+        return {
+            "total_jobs": total_jobs,
+            "completed_jobs": completed_jobs,
+            "pending_jobs": pending_jobs,
+            "error_jobs": error_jobs,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get dashboard stats: {str(e)}")
+
+@app.get("/dashboard/recent-jobs")
+async def get_recent_jobs(
+    limit: int = 10,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get recent jobs for dashboard"""
+    try:
+        # Get all jobs and sort by created date
+        all_jobs = await s3_service.get_all_jobs()
+        
+        # Sort by created_at descending (most recent first)
+        sorted_jobs = sorted(
+            all_jobs,
+            key=lambda x: x.get('created_at', ''),
+            reverse=True
+        )
+        
+        # Take the most recent N jobs
+        recent_jobs = sorted_jobs[:limit]
+        
+        # Format for dashboard
+        formatted_jobs = []
+        for job in recent_jobs:
+            # Get document count from manifest if available
+            documents_processed = 0
+            if job.get('status') == 'completed':
+                try:
+                    # Count documents for this job from manifest
+                    manifest = await s3_service.get_manifest()
+                    documents_for_job = [
+                        doc for doc in manifest.get('documents', [])
+                        if doc.get('job_id') == job.get('job_id')
+                    ]
+                    documents_processed = len(documents_for_job)
+                except Exception:
+                    documents_processed = len(job.get('files', []))
+            else:
+                documents_processed = len(job.get('files', []))
+            
+            formatted_jobs.append({
+                "id": job.get('job_id'),
+                "name": job.get('job_name', 'Unnamed Job'),
+                "status": job.get('status', 'unknown'),
+                "documents_processed": documents_processed,
+                "created_at": job.get('created_at', datetime.utcnow().isoformat())
+            })
+        
+        return {
+            "jobs": formatted_jobs,
+            "total_count": len(all_jobs),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get recent jobs: {str(e)}")
+
 # Authentication endpoints
 @app.post("/auth/login", response_model=TokenResponse)
 async def login(request: LoginRequest):

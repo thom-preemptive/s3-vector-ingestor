@@ -41,6 +41,32 @@ export const apiService = {
   },
 
   // Dashboard endpoints
+  async getDashboardStats() {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_ENDPOINT}/dashboard/stats`, {
+      headers
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  },
+
+  async getDashboardRecentJobs(limit = 10) {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_ENDPOINT}/dashboard/recent-jobs?limit=${limit}`, {
+      headers
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  },
+
   async getDashboardJobs(limit = 20) {
     try {
       const headers = await getAuthHeaders();
