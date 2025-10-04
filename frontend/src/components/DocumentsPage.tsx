@@ -5,15 +5,6 @@ import {
   Typography,
   TextField,
   InputAdornment,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  IconButton,
   Button,
   CircularProgress,
   Alert,
@@ -21,6 +12,18 @@ import {
   Grid,
   Card,
   CardContent,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  IconButton,
+  Chip,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -29,7 +32,10 @@ import {
   Description as DescriptionIcon,
   PictureAsPdf as PdfIcon,
   Language as LanguageIcon,
+  MoreVert as MoreVertIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 
@@ -69,6 +75,12 @@ const DocumentsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const docsPerPage = 20;
+
+  // Menu and dialog state
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
 
   useEffect(() => {
     loadDocuments();
@@ -155,7 +167,12 @@ const DocumentsPage: React.FC = () => {
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+
+    if (bytes < 1024 * 1024) { // Under 1 MB - show whole numbers
+      return Math.round(bytes / Math.pow(k, i)) + ' ' + sizes[i];
+    } else { // 1 MB or over - show one decimal
+      return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + ' ' + sizes[i];
+    }
   };
 
   const formatDate = (dateString: string): string => {
@@ -177,10 +194,127 @@ const DocumentsPage: React.FC = () => {
     }
   };
 
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, document: Document) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedDocument(document);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedDocument(null);
+  };
+
+  const handleDeleteClick = (document: Document) => {
+    setDocumentToDelete(document);
+    setDeleteDialogOpen(true);
+    handleMenuClose();
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!documentToDelete) return;
+
+    try {
+      // TODO: Implement delete API call
+      // await api.deleteDocument(documentToDelete.document_id);
+      console.log('Delete document:', documentToDelete.document_id);
+      await loadDocuments(); // Refresh the list
+      setDeleteDialogOpen(false);
+      setDocumentToDelete(null);
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      // TODO: Show error snackbar
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setDocumentToDelete(null);
+  };
+
+  const columns: GridColDef[] = [
+    {
+      field: 'type',
+      headerName: 'Type',
+      width: 80,
+      sortable: false,
+      renderCell: (params) => getSourceIcon(params.row.source_type),
+    },
+    {
+      field: 'job_name',
+      headerName: 'Job Name',
+      width: 200,
+      sortable: true,
+    },
+    {
+      field: 'filename',
+      headerName: 'Filename',
+      width: 250,
+      sortable: true,
+      renderCell: (params) => (
+        <Box>
+          <Typography
+            variant="body2"
+            sx={{
+              cursor: 'pointer',
+              color: 'primary.main',
+              textDecoration: 'underline',
+              '&:hover': { color: 'primary.dark' }
+            }}
+            onClick={() => handleViewDocument(params.row.document_id)}
+          >
+            {params.value}
+          </Typography>
+          {params.row.match_field && (
+            <Chip
+              label={`Match: ${params.row.match_field}`}
+              size="small"
+              color="primary"
+              sx={{ mt: 0.5 }}
+            />
+          )}
+        </Box>
+      ),
+    },
+    {
+      field: 'file_size',
+      headerName: 'Size',
+      width: 100,
+      sortable: true,
+      renderCell: (params) => formatBytes(params.value),
+    },
+    {
+      field: 'processed_at',
+      headerName: 'Processed',
+      width: 180,
+      sortable: true,
+      renderCell: (params) => formatDate(params.value),
+    },
+    {
+      field: 'user_id',
+      headerName: 'User',
+      width: 150,
+      sortable: true,
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 80,
+      sortable: false,
+      renderCell: (params) => (
+        <IconButton
+          size="small"
+          onClick={(event) => handleMenuOpen(event, params.row)}
+        >
+          <MoreVertIcon />
+        </IconButton>
+      ),
+    },
+  ];
+
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
-        {searchParams.get('job') ? `Documents from Job ${searchParams.get('job')}` : 'Documents'}
+        {searchParams.get('job') ? `Documents from Job ${searchParams.get('job')}` : 'Processed Documents'}
       </Typography>
 
       {/* Statistics Cards */}
@@ -285,61 +419,31 @@ const DocumentsPage: React.FC = () => {
         </Alert>
       ) : (
         <>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Type</TableCell>
-                  <TableCell>Filename</TableCell>
-                  <TableCell>Job Name</TableCell>
-                  <TableCell>Size</TableCell>
-                  <TableCell>Processed</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {documents.map((doc) => (
-                  <TableRow key={doc.document_id} hover>
-                    <TableCell>{getSourceIcon(doc.source_type)}</TableCell>
-                    <TableCell>
-                      <Box>
-                        <Typography variant="body2">{doc.filename}</Typography>
-                        {doc.match_field && (
-                          <Chip
-                            label={`Match: ${doc.match_field}`}
-                            size="small"
-                            color="primary"
-                            sx={{ mt: 0.5 }}
-                          />
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell>{doc.job_name}</TableCell>
-                    <TableCell>{formatBytes(doc.file_size)}</TableCell>
-                    <TableCell>{formatDate(doc.processed_at)}</TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleViewDocument(doc.document_id)}
-                        title="View Document"
-                      >
-                        <VisibilityIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="secondary"
-                        onClick={() => handleDownload(doc.document_id, doc.filename, 'markdown')}
-                        title="Download Markdown"
-                      >
-                        <DownloadIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <DataGrid
+            rows={documents}
+            columns={columns}
+            getRowId={(row) => row.document_id}
+            initialState={{
+              pagination: {
+                paginationModel: { pageSize: docsPerPage },
+              },
+            }}
+            pageSizeOptions={[docsPerPage]}
+            disableRowSelectionOnClick
+            disableColumnFilter
+            disableColumnSelector
+            disableDensitySelector
+            hideFooterPagination
+            autoHeight
+            sx={{
+              '& .MuiDataGrid-cell:focus': {
+                outline: 'none',
+              },
+              '& .MuiDataGrid-row:hover': {
+                backgroundColor: 'action.hover',
+              },
+            }}
+          />
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -354,6 +458,66 @@ const DocumentsPage: React.FC = () => {
           )}
         </>
       )}
+
+      {/* Actions Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={() => {
+          if (selectedDocument) {
+            handleViewDocument(selectedDocument.document_id);
+            handleMenuClose();
+          }
+        }}>
+          <ListItemIcon>
+            <VisibilityIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>View</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => {
+          if (selectedDocument) {
+            handleDownload(selectedDocument.document_id, selectedDocument.filename, 'markdown');
+            handleMenuClose();
+          }
+        }}>
+          <ListItemIcon>
+            <DownloadIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Download</ListItemText>
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={() => {
+          if (selectedDocument) {
+            handleDeleteClick(selectedDocument);
+          }
+        }}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          <ListItemText sx={{ color: 'error.main' }}>Delete</ListItemText>
+        </MenuItem>
+      </Menu>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+      >
+        <DialogTitle>Delete Document</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete "{documentToDelete?.filename}"? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
