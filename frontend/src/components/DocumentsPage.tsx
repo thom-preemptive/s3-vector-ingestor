@@ -262,24 +262,26 @@ const DocumentsPage: React.FC = () => {
     setDocumentToDelete(null);
   };
 
-  const columns: GridColDef[] = [
+    const columns: GridColDef[] = [
     {
       field: 'type',
       headerName: 'Type',
-      width: 80,
+      width: 70,
       sortable: false,
       renderCell: (params) => getSourceIcon(params.row.source_type),
     },
     {
       field: 'job_name',
       headerName: 'Job Name',
-      width: 200,
+      flex: 1,
+      minWidth: 150,
       sortable: true,
     },
     {
       field: 'filename',
       headerName: 'Filename',
-      width: 250,
+      flex: 2,
+      minWidth: 200,
       sortable: true,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
@@ -309,33 +311,34 @@ const DocumentsPage: React.FC = () => {
     {
       field: 'file_size',
       headerName: 'Size',
-      width: 100,
+      width: 80,
       sortable: true,
       renderCell: (params) => formatBytes(params.value),
     },
     {
       field: 'processed_at',
       headerName: 'Processed',
-      width: 180,
+      width: 160,
       sortable: true,
       renderCell: (params) => formatDate(params.value),
     },
     {
       field: 'user_id',
       headerName: 'User',
-      width: 150,
+      width: 140,
       sortable: true,
       renderCell: (params) => userEmails[params.value] || 'Loading...',
     },
     {
       field: 'actions',
-      headerName: 'Actions',
-      width: 80,
+      headerName: '',
+      width: 60,
       sortable: false,
       renderCell: (params) => (
         <IconButton
           size="small"
           onClick={(event) => handleMenuOpen(event, params.row)}
+          sx={{ padding: '4px' }}
         >
           <MoreVertIcon />
         </IconButton>
@@ -344,7 +347,7 @@ const DocumentsPage: React.FC = () => {
   ];
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth={false} sx={{ mt: 4, mb: 4, px: 3 }}>
       <Typography variant="h4" gutterBottom>
         {searchParams.get('job') ? `Documents from Job ${searchParams.get('job')}` : 'Processed Documents'}
       </Typography>
