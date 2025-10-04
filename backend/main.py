@@ -151,14 +151,19 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     """Get dashboard statistics (total jobs, completed, pending, errors)"""
     try:
-        # Get all jobs from DynamoDB
-        all_jobs = await dynamodb_service.get_all_jobs()
+        # Get user's jobs from DynamoDB (filter by current user)
+        table = dynamodb.Table(DYNAMODB_TABLE)
+        response = table.scan(
+            FilterExpression='user_id = :user_id',
+            ExpressionAttributeValues={':user_id': current_user['user_id']}
+        )
+        user_jobs = response.get('Items', [])
         
         # Count jobs by status
-        total_jobs = len(all_jobs)
-        completed_jobs = sum(1 for job in all_jobs if job.get('status') == 'completed')
-        pending_jobs = sum(1 for job in all_jobs if job.get('status') in ['queued', 'processing'])
-        error_jobs = sum(1 for job in all_jobs if job.get('status') == 'failed')
+        total_jobs = len(user_jobs)
+        completed_jobs = sum(1 for job in user_jobs if job.get('status') == 'completed')
+        pending_jobs = sum(1 for job in user_jobs if job.get('status') in ['queued', 'processing'])
+        error_jobs = sum(1 for job in user_jobs if job.get('status') == 'failed')
         
         return {
             "total_jobs": total_jobs,
