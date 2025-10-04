@@ -1,23 +1,23 @@
 import React from 'react';
 import {
-  Container,
+  Box,
   Typography,
   Paper,
 } from '@mui/material';
 
 const SettingsPage: React.FC = () => {
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+    <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
         Settings
       </Typography>
 
-      <Paper sx={{ p: 4, textAlign: 'center' }}>
+      <Paper sx={{ p: 4 }}>
         <Typography variant="h5" color="textSecondary">
           Coming Soon
         </Typography>
       </Paper>
-    </Container>
+    </Box>
   );
 };
 
