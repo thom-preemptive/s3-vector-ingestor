@@ -415,6 +415,14 @@ class DynamoDBService:
         except Exception as e:
             raise Exception(f"Failed to get job statistics: {str(e)}")
     
+    async def get_all_jobs(self) -> List[Dict[str, Any]]:
+        """Get all jobs from DynamoDB"""
+        try:
+            response = self.table.scan()
+            return response.get('Items', [])
+        except Exception as e:
+            raise Exception(f"Failed to get all jobs: {str(e)}")
+    
     async def update_job_progress(self, job_id: str, documents_processed: int, 
                                  total_documents: int = None, status_message: str = None) -> None:
         """Update job progress tracking"""

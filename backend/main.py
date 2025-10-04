@@ -152,7 +152,7 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     """Get dashboard statistics (total jobs, completed, pending, errors)"""
     try:
         # Get all jobs from DynamoDB
-        all_jobs = await s3_service.get_all_jobs()
+        all_jobs = await dynamodb_service.get_all_jobs()
         
         # Count jobs by status
         total_jobs = len(all_jobs)
@@ -179,7 +179,7 @@ async def get_recent_jobs(
     """Get recent jobs for dashboard"""
     try:
         # Get all jobs and sort by created date
-        all_jobs = await s3_service.get_all_jobs()
+        all_jobs = await dynamodb_service.get_all_jobs()
         
         # Sort by created_at descending (most recent first)
         sorted_jobs = sorted(

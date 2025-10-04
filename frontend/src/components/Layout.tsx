@@ -65,8 +65,8 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
       <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
         {/* Eventual Logo */}
         <img 
-          src="/logo.Eventual_100x74_transparent.png" 
-          alt="Eventual Logo" 
+          src="/ingestor.png" 
+          alt="Ingestor Logo" 
           style={{ 
             height: '50px', 
             width: 'auto',
