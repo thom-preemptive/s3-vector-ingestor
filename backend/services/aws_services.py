@@ -320,6 +320,75 @@ class S3Service:
         except Exception as e:
             raise Exception(f"Failed to search documents: {str(e)}")
 
+    async def clear_environment_buckets(self, environment: str) -> List[str]:
+        """
+        Clear all objects from buckets belonging to the specified environment.
+        Only works for DEV and TEST environments for safety.
+        """
+        if environment.lower() == 'main':
+            raise Exception("Cannot clear buckets in MAIN environment")
+        
+        try:
+            cleared_buckets = []
+            
+            # List all buckets
+            response = self.s3_client.list_buckets()
+            
+            for bucket in response['Buckets']:
+                bucket_name = bucket['Name']
+                
+                # Check if bucket belongs to this environment
+                if f'-{environment}-' in bucket_name or bucket_name.endswith(f'-{environment}'):
+                    # Clear all objects in the bucket
+                    paginator = self.s3_client.get_paginator('list_objects_v2')
+                    pages = paginator.paginate(Bucket=bucket_name)
+                    
+                    for page in pages:
+                        if 'Contents' in page:
+                            objects_to_delete = [{'Key': obj['Key']} for obj in page['Contents']]
+                            if objects_to_delete:
+                                self.s3_client.delete_objects(
+                                    Bucket=bucket_name,
+                                    Delete={'Objects': objects_to_delete}
+                                )
+                    
+                    cleared_buckets.append(bucket_name)
+            
+            return cleared_buckets
+        except Exception as e:
+            raise Exception(f"Failed to clear environment buckets: {str(e)}")
+
+    async def get_total_document_count(self) -> int:
+        """Get total count of documents across all environments"""
+        try:
+            manifest = await self.get_manifest()
+            return len(manifest.get('documents', []))
+        except Exception as e:
+            return 0
+
+    async def get_total_storage_usage_gb(self) -> float:
+        """Get total storage usage in GB across all buckets"""
+        try:
+            total_size = 0
+            response = self.s3_client.list_buckets()
+            
+            for bucket in response['Buckets']:
+                bucket_name = bucket['Name']
+                try:
+                    paginator = self.s3_client.get_paginator('list_objects_v2')
+                    pages = paginator.paginate(Bucket=bucket_name)
+                    
+                    for page in pages:
+                        if 'Contents' in page:
+                            for obj in page['Contents']:
+                                total_size += obj.get('Size', 0)
+                except:
+                    continue  # Skip inaccessible buckets
+            
+            return round(total_size / (1024**3), 2)  # Convert to GB
+        except Exception as e:
+            return 0.0
+
 class DynamoDBService:
     def __init__(self):
         self.dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -518,6 +587,81 @@ class DynamoDBService:
         except Exception as e:
             raise Exception(f"Failed to get jobs by status: {str(e)}")
 
+    async def clear_environment_tables(self, environment: str) -> List[str]:
+        """
+        Clear all items from DynamoDB tables belonging to the specified environment.
+        Only works for DEV and TEST environments for safety.
+        """
+        if environment.lower() == 'main':
+            raise Exception("Cannot clear tables in MAIN environment")
+        
+        try:
+            cleared_tables = []
+            
+            # List all tables
+            paginator = self.dynamodb.meta.client.get_paginator('list_tables')
+            
+            for page in paginator.paginate():
+                for table_name in page['TableNames']:
+                    # Check if table belongs to this environment
+                    if f'-{environment}-' in table_name or table_name.endswith(f'-{environment}'):
+                        # Scan and delete all items in the table
+                        table = self.dynamodb.Table(table_name)
+                        
+                        # Get table key schema to identify primary key
+                        table_desc = table.meta.client.describe_table(TableName=table_name)
+                        key_schema = table_desc['Table']['KeySchema']
+                        
+                        # Extract primary key attributes
+                        key_attrs = [key['AttributeName'] for key in key_schema]
+                        
+                        # Scan all items
+                        response = table.scan(ProjectionExpression=','.join(key_attrs))
+                        
+                        # Delete items in batches
+                        with table.batch_writer() as batch:
+                            for item in response['Items']:
+                                key = {attr: item[attr] for attr in key_attrs}
+                                batch.delete_item(Key=key)
+                        
+                        # Handle pagination
+                        while 'LastEvaluatedKey' in response:
+                            response = table.scan(
+                                ProjectionExpression=','.join(key_attrs),
+                                ExclusiveStartKey=response['LastEvaluatedKey']
+                            )
+                            with table.batch_writer() as batch:
+                                for item in response['Items']:
+                                    key = {attr: item[attr] for attr in key_attrs}
+                                    batch.delete_item(Key=key)
+                        
+                        cleared_tables.append(table_name)
+            
+            return cleared_tables
+        except Exception as e:
+            raise Exception(f"Failed to clear environment tables: {str(e)}")
+
+    async def get_total_job_count(self) -> int:
+        """Get total count of jobs across all environments"""
+        try:
+            response = self.table.scan(Select='COUNT')
+            return response.get('Count', 0)
+        except Exception as e:
+            return 0
+
+    async def get_job_count_by_status(self, status: str) -> int:
+        """Get count of jobs by status"""
+        try:
+            response = self.table.scan(
+                FilterExpression='#status = :status',
+                ExpressionAttributeNames={'#status': 'status'},
+                ExpressionAttributeValues={':status': status},
+                Select='COUNT'
+            )
+            return response.get('Count', 0)
+        except Exception as e:
+            return 0
+
 class CognitoService:
     def __init__(self):
         self.cognito_client = boto3.client('cognito-idp', region_name='us-east-1')
@@ -696,3 +840,77 @@ class CognitoService:
             
         except Exception as e:
             raise Exception(f"Password confirmation failed: {str(e)}")
+
+    async def list_all_users(self) -> List[Dict[str, Any]]:
+        """List all users in the user pool (admin only)"""
+        try:
+            users = []
+            paginator = self.cognito_client.get_paginator('list_users')
+            
+            for page in paginator.paginate(UserPoolId=self.user_pool_id):
+                for user in page['Users']:
+                    user_data = {
+                        'username': user['Username'],
+                        'email': next((attr['Value'] for attr in user.get('Attributes', []) if attr['Name'] == 'email'), ''),
+                        'status': user['UserStatus'],
+                        'enabled': user['Enabled'],
+                        'created': user['UserCreateDate'].isoformat(),
+                        'last_modified': user['UserLastModifiedDate'].isoformat(),
+                        'role': next((attr['Value'] for attr in user.get('Attributes', []) if attr['Name'] == 'custom:role'), 'user')
+                    }
+                    users.append(user_data)
+            
+            return users
+        except Exception as e:
+            raise Exception(f"Failed to list users: {str(e)}")
+
+    async def get_user_count(self) -> int:
+        """Get total count of users"""
+        try:
+            count = 0
+            paginator = self.cognito_client.get_paginator('list_users')
+            
+            for page in paginator.paginate(UserPoolId=self.user_pool_id):
+                count += len(page['Users'])
+            
+            return count
+        except Exception as e:
+            return 0
+
+    async def get_active_users_count(self, days: int) -> int:
+        """Get count of users active in the last N days"""
+        try:
+            # This is a simplified implementation
+            # In a real scenario, you'd track user activity in DynamoDB
+            from datetime import datetime, timedelta
+            cutoff_date = datetime.now() - timedelta(days=days)
+            
+            count = 0
+            paginator = self.cognito_client.get_paginator('list_users')
+            
+            for page in paginator.paginate(UserPoolId=self.user_pool_id):
+                for user in page['Users']:
+                    if user['UserLastModifiedDate'] > cutoff_date:
+                        count += 1
+            
+            return count
+        except Exception as e:
+            return 0
+
+    async def get_new_users_count(self, days: int) -> int:
+        """Get count of new users in the last N days"""
+        try:
+            from datetime import datetime, timedelta
+            cutoff_date = datetime.now() - timedelta(days=days)
+            
+            count = 0
+            paginator = self.cognito_client.get_paginator('list_users')
+            
+            for page in paginator.paginate(UserPoolId=self.user_pool_id):
+                for user in page['Users']:
+                    if user['UserCreateDate'] > cutoff_date:
+                        count += 1
+            
+            return count
+        except Exception as e:
+            return 0

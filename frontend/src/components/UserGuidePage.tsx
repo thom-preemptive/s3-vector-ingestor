@@ -7,8 +7,6 @@ import {
 import ReactMarkdown from 'react-markdown';
 
 const userGuideContent = `
-# S3 Vector Store Ingestor User Guide
-
 Welcome to S3 Vector Store Ingestor, a cloud-ready document processing platform that converts PDFs and web content into AI-ready markdown and vector embeddings.
 
 ## Overview

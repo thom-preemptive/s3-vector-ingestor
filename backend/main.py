@@ -147,6 +147,50 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+# Admin role checking
+async def get_admin_user(current_user: dict = Depends(get_current_user)):
+    """
+    Dependency to check if the current user has admin role.
+    Raises HTTPException if user is not an admin.
+    """
+    try:
+        # Check for custom:role attribute in Cognito token
+        token_payload = current_user.get('token_payload', {})
+        user_role = token_payload.get('custom:role', '')
+        
+        if user_role != 'admin':
+            raise HTTPException(
+                status_code=403,
+                detail="Admin privileges required for this operation"
+            )
+        
+        return current_user
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to verify admin role: {str(e)}"
+        )
+
+async def get_admin_user_with_environment_check(
+    current_user: dict = Depends(get_admin_user)
+):
+    """
+    Enhanced admin check that also validates environment for destructive operations.
+    Only allows destructive operations in DEV and TEST environments.
+    """
+    # Get current environment from environment variable
+    current_env = os.getenv('ENVIRONMENT', 'dev').lower()
+    
+    if current_env == 'main':
+        raise HTTPException(
+            status_code=403,
+            detail="Destructive operations are not allowed in MAIN environment"
+        )
+    
+    return current_user
+
 # Dashboard Statistics Endpoints
 @app.get("/dashboard/stats")
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
@@ -1388,6 +1432,159 @@ async def list_documents(
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list documents: {str(e)}")
+
+# Admin Endpoints
+@app.post("/admin/clear-buckets")
+async def clear_buckets(
+    admin_user: dict = Depends(get_admin_user_with_environment_check)
+):
+    """
+    Clear all S3 buckets for the current environment (DEV/TEST only).
+    This is a destructive operation that cannot be undone.
+    """
+    try:
+        current_env = os.getenv('ENVIRONMENT', 'dev').lower()
+        
+        # Double-check environment safety
+        if current_env == 'main':
+            raise HTTPException(
+                status_code=403,
+                detail="Bucket clearing is not allowed in MAIN environment"
+            )
+        
+        # Clear all buckets for the current environment
+        cleared_buckets = await s3_service.clear_environment_buckets(current_env)
+        
+        return {
+            "success": True,
+            "environment": current_env,
+            "cleared_buckets": cleared_buckets,
+            "admin_user": admin_user.get('username'),
+            "timestamp": datetime.utcnow().isoformat(),
+            "message": f"Successfully cleared {len(cleared_buckets)} buckets in {current_env.upper()} environment"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to clear buckets: {str(e)}"
+        )
+
+@app.post("/admin/clear-tables")
+async def clear_tables(
+    admin_user: dict = Depends(get_admin_user_with_environment_check)
+):
+    """
+    Clear all DynamoDB tables for the current environment (DEV/TEST only).
+    This is a destructive operation that cannot be undone.
+    """
+    try:
+        current_env = os.getenv('ENVIRONMENT', 'dev').lower()
+        
+        # Double-check environment safety
+        if current_env == 'main':
+            raise HTTPException(
+                status_code=403,
+                detail="Table clearing is not allowed in MAIN environment"
+            )
+        
+        # Clear all tables for the current environment
+        cleared_tables = await dynamodb_service.clear_environment_tables(current_env)
+        
+        return {
+            "success": True,
+            "environment": current_env,
+            "cleared_tables": cleared_tables,
+            "admin_user": admin_user.get('username'),
+            "timestamp": datetime.utcnow().isoformat(),
+            "message": f"Successfully cleared {len(cleared_tables)} tables in {current_env.upper()} environment"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to clear tables: {str(e)}"
+        )
+
+@app.get("/admin/users")
+async def list_all_users(
+    admin_user: dict = Depends(get_admin_user)
+):
+    """
+    List all users in the system (admin only).
+    Provides user management capabilities for admins.
+    """
+    try:
+        # Get all users from Cognito
+        users = await cognito_service.list_all_users()
+        
+        return {
+            "success": True,
+            "users": users,
+            "total_count": len(users),
+            "admin_user": admin_user.get('username'),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to list users: {str(e)}"
+        )
+
+@app.get("/admin/system-analytics")
+async def get_system_analytics(
+    admin_user: dict = Depends(get_admin_user)
+):
+    """
+    Get comprehensive system analytics (admin only).
+    Includes user statistics, job statistics, and system health metrics.
+    """
+    try:
+        # Get system-wide statistics
+        analytics = {
+            "users": {
+                "total_users": await cognito_service.get_user_count(),
+                "active_users_30d": await cognito_service.get_active_users_count(30),
+                "new_users_7d": await cognito_service.get_new_users_count(7)
+            },
+            "jobs": {
+                "total_jobs": await dynamodb_service.get_total_job_count(),
+                "completed_jobs": await dynamodb_service.get_job_count_by_status('completed'),
+                "pending_jobs": await dynamodb_service.get_job_count_by_status('pending'),
+                "failed_jobs": await dynamodb_service.get_job_count_by_status('failed')
+            },
+            "storage": {
+                "total_documents": await s3_service.get_total_document_count(),
+                "storage_used_gb": await s3_service.get_total_storage_usage_gb()
+            },
+            "system": {
+                "environment": os.getenv('ENVIRONMENT', 'dev'),
+                "uptime_check": "healthy",
+                "last_updated": datetime.utcnow().isoformat()
+            }
+        }
+        
+        return {
+            "success": True,
+            "analytics": analytics,
+            "admin_user": admin_user.get('username'),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get system analytics: {str(e)}"
+        )
 
 if __name__ == "__main__":
     import uvicorn
