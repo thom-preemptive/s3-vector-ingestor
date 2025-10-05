@@ -7,13 +7,13 @@ import {
 import ReactMarkdown from 'react-markdown';
 
 const userGuideContent = `
-# agent2_ingestor User Guide
+# S3 Vector Store Ingestor User Guide
 
-Welcome to agent2_ingestor, a cloud-ready document processing platform that converts PDFs and web content into AI-ready markdown and vector embeddings.
+Welcome to S3 Vector Store Ingestor, a cloud-ready document processing platform that converts PDFs and web content into AI-ready markdown and vector embeddings.
 
 ## Overview
 
-agent2_ingestor is designed to process emergency response documents, research materials, and other critical content by:
+S3 Vector Store Ingestor is designed to process emergency response documents, research materials, and other critical content by:
 
 - **Extracting text** from PDFs using OCR (AWS Textract)
 - **Converting web pages** to clean markdown format
@@ -282,7 +282,7 @@ agent2_ingestor is designed to process emergency response documents, research ma
 
 ---
 
-*This guide covers agent2_ingestor version 0.57. Features and functionality may evolve with future updates.*
+*This guide covers S3 Vector Store Ingestor version 0.77. Features and functionality may evolve with future updates.*
 `;
 
 const UserGuidePage: React.FC = () => {
