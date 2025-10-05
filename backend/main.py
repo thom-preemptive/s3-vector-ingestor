@@ -151,17 +151,18 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 async def get_admin_user(current_user: dict = Depends(get_current_user)):
     """
     Dependency to check if the current user has admin role.
+    Checks for membership in the "Administrators" Cognito group.
     Raises HTTPException if user is not an admin.
     """
     try:
-        # Check for custom:role attribute in Cognito token
+        # Check for cognito:groups in the token payload
         token_payload = current_user.get('token_payload', {})
-        user_role = token_payload.get('custom:role', '')
+        user_groups = token_payload.get('cognito:groups', [])
         
-        if user_role != 'admin':
+        if 'Administrators' not in user_groups:
             raise HTTPException(
                 status_code=403,
-                detail="Admin privileges required for this operation"
+                detail="Admin privileges required. User not in Administrators group."
             )
         
         return current_user

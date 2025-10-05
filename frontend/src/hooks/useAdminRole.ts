@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
 /**
- * Custom hook to check admin role and permissions
- * Reads from Cognito custom:role attribute
+ * Interface for admin permissions
+ * Defines what administrative actions a user can perform
  */
 export interface AdminPermissions {
   isAdmin: boolean;
@@ -15,6 +15,12 @@ export interface AdminPermissions {
   environment: string;
 }
 
+/**
+ * Custom hook to check admin role and permissions
+ * Reads from Cognito groups (cognito:groups in JWT token)
+ * 
+ * @returns AdminPermissions object with role-based permissions
+ */
 export const useAdminRole = (): AdminPermissions => {
   const [permissions, setPermissions] = useState<AdminPermissions>({
     isAdmin: false,
@@ -23,32 +29,28 @@ export const useAdminRole = (): AdminPermissions => {
     canViewAllUsers: false,
     canManageUsers: false,
     canViewSystemAnalytics: false,
-    environment: 'unknown'
+    environment: process.env.REACT_APP_ENVIRONMENT || 'dev'
   });
 
   useEffect(() => {
+    /**
+     * Check if current user has admin privileges via Cognito groups
+     */
     const checkAdminRole = async (): Promise<void> => {
       try {
+        // Get current authentication session
         const session = await fetchAuthSession();
-        const idToken = session.tokens?.idToken;
-        const environment = process.env.REACT_APP_ENVIRONMENT || 'unknown';
+        const groups = session.tokens?.accessToken?.payload['cognito:groups'] as string[] || [];
         
-        if (!idToken) {
-          return;
-        }
-
-        // Parse the JWT token to get custom attributes
-        const payload = idToken.payload;
-        const customRole = payload['custom:role'] as string;
-        const isAdmin = customRole === 'admin';
-
-        // Admin permissions based on environment
-        const isNonProd = ['dev', 'test'].includes(environment);
+        // Check if user is in Administrators group
+        const isAdmin = groups.includes('Administrators');
+        const environment = process.env.REACT_APP_ENVIRONMENT || 'dev';
+        const isMainEnvironment = environment === 'main';
 
         setPermissions({
           isAdmin,
-          canClearTables: isAdmin && isNonProd,
-          canClearBuckets: isAdmin && isNonProd,
+          canClearTables: isAdmin && !isMainEnvironment,
+          canClearBuckets: isAdmin && !isMainEnvironment,
           canViewAllUsers: isAdmin,
           canManageUsers: isAdmin,
           canViewSystemAnalytics: isAdmin,
@@ -56,6 +58,16 @@ export const useAdminRole = (): AdminPermissions => {
         });
       } catch (error) {
         console.error('Error checking admin role:', error);
+        // Set safe defaults on error
+        setPermissions({
+          isAdmin: false,
+          canClearTables: false,
+          canClearBuckets: false,
+          canViewAllUsers: false,
+          canManageUsers: false,
+          canViewSystemAnalytics: false,
+          environment: process.env.REACT_APP_ENVIRONMENT || 'dev'
+        });
       }
     };
 
