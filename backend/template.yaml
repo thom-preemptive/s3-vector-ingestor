@@ -67,7 +67,7 @@ Resources:
           ENVIRONMENT: !Ref Environment
           COGNITO_USER_POOL_ID: !FindInMap [EnvironmentConfig, !Ref Environment, CognitoUserPoolId]
           COGNITO_CLIENT_ID: !FindInMap [EnvironmentConfig, !Ref Environment, CognitoClientId]
-          S3_BUCKET: agent2-ingestor-bucket-us-east-1
+          S3_BUCKET: !Sub 'agent2-ingestor-bucket-${Environment}-us-east-1'
           EVENT_BUS_NAME: !FindInMap [EnvironmentConfig, !Ref Environment, EventBusName]
       Events:
         ApiEvent:
