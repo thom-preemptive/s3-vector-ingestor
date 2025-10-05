@@ -96,6 +96,8 @@ Resources:
           AttributeType: S
         - AttributeName: status
           AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
       GlobalSecondaryIndexes:
         - IndexName: UserJobsIndex
           KeySchema:
@@ -128,6 +130,8 @@ Resources:
         - AttributeName: user_id
           AttributeType: S
         - AttributeName: status
+          AttributeType: S
+        - AttributeName: created_at
           AttributeType: S
       GlobalSecondaryIndexes:
         - IndexName: UserIdIndex
