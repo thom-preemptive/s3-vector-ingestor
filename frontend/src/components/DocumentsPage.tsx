@@ -353,7 +353,7 @@ const DocumentsPage: React.FC = () => {
 
   return (
     <Container maxWidth={false} sx={{ mt: 4, mb: 4, px: 3 }}>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
         {searchParams.get('job') ? `Documents from Job ${searchParams.get('job')}` : 'Processed Documents'}
       </Typography>
 

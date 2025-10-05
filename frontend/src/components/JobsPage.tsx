@@ -60,7 +60,7 @@ const JobsPage: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">Processing Jobs</Typography>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>Processing Jobs</Typography>
         <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchJobs} disabled={loading}>Refresh</Button>
       </Box>
       <Paper elevation={2}>

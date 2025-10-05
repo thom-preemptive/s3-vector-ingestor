@@ -196,7 +196,7 @@ const DiagnosticPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
         System Diagnostics
       </Typography>
       <Typography variant="body1" color="text.secondary" gutterBottom>

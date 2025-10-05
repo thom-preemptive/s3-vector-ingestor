@@ -61,7 +61,7 @@ S3 Vector Store Ingestor is designed to process emergency response documents, re
 2. Drag PDF files or click to browse
 3. Add optional notes for context
 4. Click "Upload" to start processing
-5. Monitor progress in the Jobs page
+5. Monitor progress in the Job Queue page
 
 ### 🌐 URL Scraping
 **Purpose**: Convert web pages and online content into markdown format
@@ -85,9 +85,9 @@ S3 Vector Store Ingestor is designed to process emergency response documents, re
 2. Enter one or more URLs
 3. Add optional notes for context
 4. Click "Process URLs"
-5. Monitor progress in the Jobs page
+5. Monitor progress in the Job Queue page
 
-### 📋 Jobs
+### 📋 Job Queue
 **Purpose**: Monitor document processing jobs in real-time
 **Why it's needed**: Provides transparency into processing pipeline and handles failures
 
@@ -105,7 +105,7 @@ S3 Vector Store Ingestor is designed to process emergency response documents, re
 - **Failed**: Processing error occurred
 
 **How to use**:
-1. Navigate to "Jobs" to see all your jobs
+1. Navigate to "Job Queue" to see all your jobs
 2. Click on job rows for detailed information
 3. Use filters to find specific jobs
 4. Monitor for failed jobs that need attention
@@ -288,7 +288,7 @@ S3 Vector Store Ingestor is designed to process emergency response documents, re
 const UserGuidePage: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
         User Guide
       </Typography>
 
