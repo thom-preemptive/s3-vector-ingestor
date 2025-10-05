@@ -25,6 +25,7 @@ import {
   BugReport as DiagnosticIcon,
   Description as DescriptionIcon,
   Settings as SettingsIcon,
+  Help as HelpIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import versionInfo from '../version.json';
@@ -60,6 +61,7 @@ const Layout: React.FC<LayoutProps> = ({ user, signOut, children }) => {
     { text: 'Approvals', icon: <ApprovalIcon />, path: '/approvals' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
     { text: 'Diagnostics', icon: <DiagnosticIcon />, path: '/diagnostics' },
+    { text: 'User Guide', icon: <HelpIcon />, path: '/user-guide' },
   ];
 
   const drawer = (

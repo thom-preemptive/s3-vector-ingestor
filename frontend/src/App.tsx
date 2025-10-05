@@ -15,6 +15,7 @@ import DiagnosticPage from './components/DiagnosticPage';
 import DocumentsPage from './components/DocumentsPage';
 import DocumentViewerPage from './components/DocumentViewerPage';
 import SettingsPage from './components/SettingsPage';
+import UserGuidePage from './components/UserGuidePage';
 
 const theme = createTheme({
   palette: {
@@ -183,6 +184,7 @@ function App() {
                 <Route path="/approvals" element={<ApprovalPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/diagnostics" element={<DiagnosticPage />} />
+                <Route path="/user-guide" element={<UserGuidePage />} />
                 <Route path="/documents" element={<DocumentsPage />} />
                 <Route path="/documents/:documentId" element={<DocumentViewerPage />} />
               </Routes>
