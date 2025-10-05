@@ -88,7 +88,7 @@ const URLScrapingPage: React.FC<URLScrapingPageProps> = ({ user }) => {
   const urlCount = urls.split('\n').filter(url => url.trim()).length;
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto' }}>
+    <Box sx={{ width: '80%', mx: 'auto' }}>
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
         Scrape URL
       </Typography>
