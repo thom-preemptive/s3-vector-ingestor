@@ -58,9 +58,19 @@ Resources:
             Action:
               - dynamodb:CreateTable
               - dynamodb:DescribeTable
+              - dynamodb:ListTables
+              - dynamodb:Scan
+              - dynamodb:BatchWriteItem
               - textract:*
               - bedrock:*
               - lambda:InvokeFunction
+              - s3:ListAllMyBuckets
+              - s3:ListBucket
+              - s3:DeleteObject
+              - s3:GetBucketLocation
+              - cognito-idp:ListUsers
+              - cognito-idp:AdminListGroupsForUser
+              - cognito-idp:DescribeUserPool
             Resource: '*'
       Environment:
         Variables:
