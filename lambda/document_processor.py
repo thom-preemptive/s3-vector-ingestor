@@ -28,8 +28,9 @@ bedrock = boto3.client('bedrock-runtime')
 eventbridge = boto3.client('events')
 
 # Environment variables
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'dev').lower()
 S3_BUCKET = os.environ.get('S3_BUCKET', 'emergency-docs-bucket-us-east-1')
-DOCUMENT_JOBS_TABLE = os.environ.get('DOCUMENT_JOBS_TABLE', 'document-jobs')
+DOCUMENT_JOBS_TABLE = f"agent2_ingestor_jobs_{ENVIRONMENT}"
 EVENT_BUS_NAME = os.environ.get('EVENT_BUS_NAME', 'emergency-docs-events')
 
 def lambda_handler(event, context):

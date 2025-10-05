@@ -25,8 +25,9 @@ textract = boto3.client('textract')
 bedrock = boto3.client('bedrock-runtime')
 
 # Environment variables
-DOCUMENT_JOBS_TABLE = os.environ.get('DOCUMENT_JOBS_TABLE', 'document-jobs')
-APPROVAL_TABLE = os.environ.get('APPROVAL_TABLE', 'document-approvals')
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'dev').lower()
+DOCUMENT_JOBS_TABLE = f"agent2_ingestor_jobs_{ENVIRONMENT}"
+APPROVAL_TABLE = f"agent2_ingestor_approvals_{ENVIRONMENT}"
 S3_BUCKET = os.environ.get('S3_BUCKET', 'emergency-docs-bucket-us-east-1')
 EVENT_BUS_NAME = os.environ.get('EVENT_BUS_NAME', 'emergency-docs-events')
 

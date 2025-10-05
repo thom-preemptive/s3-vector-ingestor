@@ -323,7 +323,22 @@ class S3Service:
 class DynamoDBService:
     def __init__(self):
         self.dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        self.table_name = os.getenv('DYNAMODB_TABLE', 'document-jobs')
+        # Get environment from env var (default to 'dev' if not set)
+        self.environment = os.getenv('ENVIRONMENT', 'dev').lower()
+
+        # Define base table names
+        self.base_tables = {
+            'jobs': 'agent2_ingestor_jobs'
+        }
+
+        # Apply environment suffix
+        self.tables = {
+            key: f"{name}_{self.environment}"
+            for key, name in self.base_tables.items()
+        }
+
+        # Set the main jobs table
+        self.table_name = self.tables['jobs']
         self.table = self.dynamodb.Table(self.table_name)
     
     async def create_job(self, job_data: Dict[str, Any]) -> str:

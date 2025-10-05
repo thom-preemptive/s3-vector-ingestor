@@ -20,9 +20,25 @@ class UserRole(Enum):
 class ApprovalService:
     def __init__(self):
         self.dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        self.approval_table_name = os.getenv('APPROVAL_TABLE', 'document-approvals')
-        self.user_tracking_table_name = os.getenv('USER_TRACKING_TABLE', 'user-tracking')
-        
+        # Get environment from env var (default to 'dev' if not set)
+        self.environment = os.getenv('ENVIRONMENT', 'dev').lower()
+
+        # Define base table names
+        self.base_tables = {
+            'approvals': 'agent2_ingestor_approvals',
+            'user_tracking': 'agent2_ingestor_user_tracking'
+        }
+
+        # Apply environment suffix
+        self.tables = {
+            key: f"{name}_{self.environment}"
+            for key, name in self.base_tables.items()
+        }
+
+        # Set table names
+        self.approval_table_name = self.tables['approvals']
+        self.user_tracking_table_name = self.tables['user_tracking']
+
         # Create tables if they don't exist
         self.approval_table = self._get_or_create_approval_table()
         self.user_tracking_table = self._get_or_create_user_tracking_table()
