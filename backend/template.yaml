@@ -18,6 +18,26 @@ Parameters:
     AllowedValues: ['dev', 'test', 'main']
     Description: 'Environment name'
 
+Conditions:
+  IsDevEnvironment: !Equals [!Ref Environment, 'dev']
+  IsTestEnvironment: !Equals [!Ref Environment, 'test']
+  IsMainEnvironment: !Equals [!Ref Environment, 'main']
+
+Mappings:
+  EnvironmentConfig:
+    dev:
+      CognitoUserPoolId: us-east-1_Yk8Yt64uE
+      CognitoClientId: 6hcundvt29da9ap8ji973h1pqq
+      EventBusName: agent2-ingestor-events-dev
+    test:
+      CognitoUserPoolId: us-east-1_T4apZJIeL
+      CognitoClientId: 66f28prrgbg3aisnjvoj5okuk
+      EventBusName: agent2-ingestor-events-test
+    main:
+      CognitoUserPoolId: us-east-1_mLiHR7DqI
+      CognitoClientId: erpop6dml8ucj931t6jlojfog
+      EventBusName: agent2-ingestor-events-main
+
 Resources:
   Agent2IngestorAPI:
     Type: AWS::Serverless::Function
@@ -45,10 +65,10 @@ Resources:
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
-          COGNITO_USER_POOL_ID: us-east-1_Yk8Yt64uE
-          COGNITO_CLIENT_ID: 6hcundvt29da9ap8ji973h1pqq
+          COGNITO_USER_POOL_ID: !FindInMap [EnvironmentConfig, !Ref Environment, CognitoUserPoolId]
+          COGNITO_CLIENT_ID: !FindInMap [EnvironmentConfig, !Ref Environment, CognitoClientId]
           S3_BUCKET: agent2-ingestor-bucket-us-east-1
-          EVENT_BUS_NAME: agent2-ingestor-events-dev
+          EVENT_BUS_NAME: !FindInMap [EnvironmentConfig, !Ref Environment, EventBusName]
       Events:
         ApiEvent:
           Type: Api
