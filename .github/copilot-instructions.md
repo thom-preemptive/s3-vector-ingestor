@@ -54,6 +54,7 @@ This file tracks the systematic setup and development of the cloud-ready, multi-
 - Always review security settings for AWS services.
 - Prefer concise explanations before code.
 - Prioritize type safety and error handling in suggestions.
+- When checking the status of an Amplify deployment, provide the Job ID, but do NOT monitor the status continuously if you detect that there is a build already running.
 
 ## Constraints
 - Always place all work in the environment us-east-1.

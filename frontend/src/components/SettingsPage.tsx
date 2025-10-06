@@ -25,6 +25,7 @@ const SettingsPage: React.FC = () => {
   const adminRole = useAdminRole();
   const [clearing, setClearing] = useState<boolean>(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [pdfMessage, setPdfMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
   
   // PDF OCR Settings
@@ -72,7 +73,7 @@ const SettingsPage: React.FC = () => {
 
   const saveSettings = async (): Promise<void> => {
     setSavingSettings(true);
-    setMessage(null);
+    setPdfMessage(null);
 
     try {
       const API_URL = process.env.REACT_APP_API_URL;
@@ -80,7 +81,7 @@ const SettingsPage: React.FC = () => {
       const token = session.tokens?.idToken?.toString();
 
       if (!token) {
-        setMessage({ type: 'error', text: 'Not authenticated' });
+        setPdfMessage({ type: 'error', text: 'Not authenticated' });
         setSavingSettings(false);
         return;
       }
@@ -95,10 +96,29 @@ const SettingsPage: React.FC = () => {
         }
       );
 
-      setMessage({ type: 'success', text: 'Settings saved successfully' });
+      setPdfMessage({ type: 'success', text: 'Settings saved successfully' });
     } catch (error) {
       console.error('Failed to save settings:', error);
-      setMessage({ type: 'error', text: 'Failed to save settings' });
+      
+      // Enhanced error logging for debugging
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        
+        if (error.response.status === 401) {
+          setPdfMessage({ type: 'error', text: 'Authentication failed. Please refresh the page and try again.' });
+        } else if (error.response.status === 403) {
+          setPdfMessage({ type: 'error', text: 'Access denied. You may not have permission to modify settings.' });
+        } else {
+          setPdfMessage({ type: 'error', text: `Failed to save settings: ${error.response.data?.detail || error.message}` });
+        }
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+        setPdfMessage({ type: 'error', text: 'No response from server. Please check your connection.' });
+      } else {
+        console.error('Error setting up request:', error.message);
+        setPdfMessage({ type: 'error', text: `Failed to save settings: ${error.message}` });
+      }
     } finally {
       setSavingSettings(false);
     }
@@ -210,6 +230,13 @@ const SettingsPage: React.FC = () => {
                 Reset to Saved
               </Button>
             </Box>
+
+            {/* PDF Settings Message */}
+            {pdfMessage && (
+              <Alert severity={pdfMessage.type} sx={{ mt: 2 }}>
+                {pdfMessage.text}
+              </Alert>
+            )}
           </>
         )}
       </Paper>
