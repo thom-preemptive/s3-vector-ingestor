@@ -158,7 +158,7 @@ const SettingsPage: React.FC = () => {
       </Typography>
 
       {/* PDF Ingestion Settings */}
-      <Paper sx={{ p: 4, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 1.5 }}>
         <Typography variant="h5" gutterBottom>
           PDF Ingestion
         </Typography>
@@ -216,7 +216,7 @@ const SettingsPage: React.FC = () => {
 
       {/* Database & Storage Management - Admin Only */}
       {adminRole.isAdmin && (
-        <Paper sx={{ p: 4, mb: 3 }}>
+        <Paper sx={{ p: 2, mb: 1.5 }}>
           <Typography variant="h5" gutterBottom>
             Database & Storage Management
           </Typography>
@@ -289,7 +289,7 @@ const SettingsPage: React.FC = () => {
 
       {/* User Management - Admin Only */}
       {adminRole.isAdmin && (
-        <Paper sx={{ p: 4, mb: 3 }}>
+        <Paper sx={{ p: 2, mb: 1.5 }}>
           <Typography variant="h5" gutterBottom>
             User Management
           </Typography>
@@ -322,7 +322,7 @@ const SettingsPage: React.FC = () => {
 
       {/* System Analytics - Admin Only */}
       {adminRole.isAdmin && (
-        <Paper sx={{ p: 4, mb: 3 }}>
+        <Paper sx={{ p: 2, mb: 1.5 }}>
           <Typography variant="h5" gutterBottom>
             System Analytics
           </Typography>
@@ -355,7 +355,7 @@ const SettingsPage: React.FC = () => {
 
       {/* Regular User Settings */}
       {!adminRole.isAdmin && (
-        <Paper sx={{ p: 4 }}>
+        <Paper sx={{ p: 2 }}>
           <Typography variant="h5" color="textSecondary">
             User Settings
           </Typography>
