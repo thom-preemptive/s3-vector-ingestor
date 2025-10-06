@@ -97,7 +97,8 @@ const SettingsPage: React.FC = () => {
       );
 
       setPdfMessage({ type: 'success', text: 'Settings saved successfully' });
-    } catch (error) {
+    } catch (err) {
+      const error = err as any; // Type assertion for error handling
       console.error('Failed to save settings:', error);
       
       // Enhanced error logging for debugging
