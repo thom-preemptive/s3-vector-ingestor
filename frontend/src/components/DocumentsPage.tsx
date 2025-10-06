@@ -24,6 +24,7 @@ import {
   Divider,
   IconButton,
   Chip,
+  Tooltip,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -280,9 +281,12 @@ const DocumentsPage: React.FC = () => {
       sortable: false,
       headerAlign: 'center',
       renderHeader: (params) => (
-        <div title="Processing Methods: Text (standard extraction), OCR (basic OCR), OCR+ (advanced OCR with tables/forms), Text Only (OCR failed fallback)">
-          Method
-        </div>
+        <Tooltip 
+          title="Processing Methods: Text (standard extraction), OCR (basic OCR), OCR+ (advanced OCR with tables/forms), Text Only (OCR failed fallback)"
+          placement="top"
+        >
+          <span>Method</span>
+        </Tooltip>
       ),
       renderCell: (params) => {
         const method = params.row.processing_method;
@@ -310,13 +314,17 @@ const DocumentsPage: React.FC = () => {
         }
         
         return (
-          <Chip
-            label={label}
-            size="small"
-            color={color}
-            variant={usedOcr ? 'filled' : 'outlined'}
+          <Tooltip 
             title={`Processing Method: ${method}${params.row.ocr_threshold_used ? ` (Threshold: ${params.row.ocr_threshold_used} words)` : ''}`}
-          />
+            placement="top"
+          >
+            <Chip
+              label={label}
+              size="small"
+              color={color}
+              variant={usedOcr ? 'filled' : 'outlined'}
+            />
+          </Tooltip>
         );
       },
     },
