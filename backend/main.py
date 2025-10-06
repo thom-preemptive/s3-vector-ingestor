@@ -1623,10 +1623,10 @@ async def set_ocr_threshold(
         threshold = request.get('threshold', 200)
         
         # Validate threshold value
-        if not isinstance(threshold, int) or threshold < 1 or threshold > 999:
+        if not isinstance(threshold, int) or threshold < 1 or threshold > 10000:
             raise HTTPException(
                 status_code=400,
-                detail="Threshold must be an integer between 1 and 999"
+                detail="Threshold must be an integer between 1 and 10,000"
             )
         
         environment = os.getenv('ENVIRONMENT', 'dev').lower()

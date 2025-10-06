@@ -200,10 +200,10 @@ const SettingsPage: React.FC = () => {
                   label="OCR Word Count Threshold"
                   type="number"
                   value={ocrThreshold}
-                  onChange={(e) => setOcrThreshold(Math.max(1, parseInt(e.target.value) || 200))}
-                  inputProps={{ min: 1, max: 999 }}
+                  onChange={(e) => setOcrThreshold(Math.max(1, Math.min(10000, parseInt(e.target.value) || 200)))}
+                  inputProps={{ min: 1, max: 10000 }}
                   fullWidth
-                  helperText="PDFs with fewer words will use OCR processing"
+                  helperText="PDFs with fewer words will use OCR processing (1-10,000)"
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={8}>
