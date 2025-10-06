@@ -20,31 +20,7 @@ class DocumentProcessor:
         self.s3_client = boto3.client('s3', region_name='us-east-1')
         self.textract_client = boto3.client('textract', region_name='us-east-1')
         self.bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
-        self.ssm_client = boto3.client('ssm', region_name='us-east-1')
         self.bucket_name = os.getenv('S3_BUCKET', 'agent2-ingestor-bucket-us-east-1')
-        
-        # Determine environment for settings
-        self.environment = self._get_environment()
-    
-    def _get_environment(self) -> str:
-        """Determine current environment from Lambda function name or default to dev"""
-        lambda_function_name = os.getenv('AWS_LAMBDA_FUNCTION_NAME', '')
-        if 'test' in lambda_function_name.lower():
-            return 'test'
-        elif 'main' in lambda_function_name.lower() or 'prod' in lambda_function_name.lower():
-            return 'main'
-        else:
-            return 'dev'
-    
-    async def _get_ocr_threshold(self) -> int:
-        """Get OCR threshold from SSM Parameter Store with fallback to default"""
-        try:
-            parameter_name = f'/agent2-ingestor/{self.environment}/ocr-threshold'
-            response = self.ssm_client.get_parameter(Name=parameter_name)
-            return int(response['Parameter']['Value'])
-        except Exception as e:
-            print(f"Failed to get OCR threshold from SSM, using default 50: {e}")
-            return 50  # Default fallback value
     
     def clean_markdown_content(self, content: str) -> str:
         """
@@ -277,15 +253,11 @@ class DocumentProcessor:
             # Calculate file hash for deduplication
             file_hash = hashlib.sha256(file_content).hexdigest()
             
-            # Get OCR threshold from environment-specific settings
-            ocr_threshold = await self._get_ocr_threshold()
-            
             # Extract text using PyPDF2 first
             pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
             text_content = ""
             page_count = len(pdf_reader.pages)
-            processing_method = "Text Extraction"
-            used_ocr = False
+            processing_method = "PyPDF2"
             
             for page_num, page in enumerate(pdf_reader.pages):
                 page_text = page.extract_text()
@@ -297,9 +269,8 @@ class DocumentProcessor:
             word_count = len(text_content.split())
             ocr_data = None
             
-            if word_count < ocr_threshold:  # Use configurable threshold
-                print(f"PDF {filename} has only {word_count} words (threshold: {ocr_threshold}), attempting advanced OCR...")
-                used_ocr = True
+            if word_count < 50:  # If too few words, likely needs OCR
+                print(f"PDF {filename} has only {word_count} words, attempting advanced OCR...")
                 
                 try:
                     # Try advanced Textract with tables and forms
@@ -307,7 +278,7 @@ class DocumentProcessor:
                     
                     if ocr_data and len(ocr_data['text'].split()) > word_count:
                         text_content = ocr_data['text']
-                        processing_method = "OCR (Advanced)"
+                        processing_method = "PyPDF2 + Textract Advanced OCR"
                         print(f"Advanced OCR improved text extraction: {len(ocr_data['text'].split())} words")
                         print(f"OCR confidence: {ocr_data.get('average_confidence', 0):.2f}%")
                         
@@ -332,11 +303,10 @@ class DocumentProcessor:
                         basic_ocr_text = await self._ocr_with_textract(file_content)
                         if len(basic_ocr_text.split()) > word_count:
                             text_content = basic_ocr_text
-                            processing_method = "OCR (Basic)"
+                            processing_method = "PyPDF2 + Textract Basic OCR"
                             print(f"Basic OCR improved text extraction: {len(basic_ocr_text.split())} words")
                     except Exception as basic_e:
                         print(f"Basic OCR also failed: {str(basic_e)}")
-                        processing_method = "Text Extraction (OCR Failed)"
             
             if not text_content.strip():
                 raise Exception("No text could be extracted from PDF")
@@ -359,9 +329,7 @@ class DocumentProcessor:
                 "processed_at": datetime.utcnow().isoformat(),
                 "word_count": len(text_content.split()),
                 "character_count": len(text_content),
-                "processing_method": processing_method,
-                "used_ocr": used_ocr,
-                "ocr_threshold_used": ocr_threshold
+                "processing_method": processing_method
             }
             
             # Add OCR-specific metadata if available
