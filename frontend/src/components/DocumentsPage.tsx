@@ -275,9 +275,15 @@ const DocumentsPage: React.FC = () => {
     },
     {
       field: 'processing_method',
-      headerName: 'Processing',
+      headerName: 'Method',
       width: 120,
       sortable: false,
+      headerAlign: 'center',
+      renderHeader: (params) => (
+        <div title="Processing Methods: Text (standard extraction), OCR (basic OCR), OCR+ (advanced OCR with tables/forms), Text Only (OCR failed fallback)">
+          Method
+        </div>
+      ),
       renderCell: (params) => {
         const method = params.row.processing_method;
         const usedOcr = params.row.used_ocr;
