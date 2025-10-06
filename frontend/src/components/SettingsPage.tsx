@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -12,6 +12,7 @@ import {
   DialogContentText,
   DialogActions,
   Grid,
+  TextField,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { fetchAuthSession } from 'aws-amplify/auth';
@@ -25,6 +26,83 @@ const SettingsPage: React.FC = () => {
   const [clearing, setClearing] = useState<boolean>(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
+  
+  // PDF OCR Settings
+  const [ocrThreshold, setOcrThreshold] = useState<number>(200);
+  const [loadingSettings, setLoadingSettings] = useState<boolean>(true);
+  const [savingSettings, setSavingSettings] = useState<boolean>(false);
+
+  // Load settings on component mount
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async (): Promise<void> => {
+    setLoadingSettings(true);
+    try {
+      const API_URL = process.env.REACT_APP_API_URL;
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+
+      if (!token) {
+        console.warn('Not authenticated, using default settings');
+        setLoadingSettings(false);
+        return;
+      }
+
+      const response = await axios.get(
+        `${API_URL}/settings/ocr-threshold`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.data.threshold) {
+        setOcrThreshold(response.data.threshold);
+      }
+    } catch (error) {
+      console.warn('Failed to load settings, using defaults:', error);
+      // Keep default value of 200
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const saveSettings = async (): Promise<void> => {
+    setSavingSettings(true);
+    setMessage(null);
+
+    try {
+      const API_URL = process.env.REACT_APP_API_URL;
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+
+      if (!token) {
+        setMessage({ type: 'error', text: 'Not authenticated' });
+        setSavingSettings(false);
+        return;
+      }
+
+      await axios.post(
+        `${API_URL}/settings/ocr-threshold`,
+        { threshold: ocrThreshold },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setMessage({ type: 'success', text: 'Settings saved successfully' });
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      setMessage({ type: 'error', text: 'Failed to save settings' });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   const handleClearTables = async (): Promise<void> => {
     setConfirmOpen(false);
@@ -78,6 +156,63 @@ const SettingsPage: React.FC = () => {
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
         Settings
       </Typography>
+
+      {/* PDF Ingestion Settings */}
+      <Paper sx={{ p: 4, mb: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          PDF Ingestion
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Configure how PDF documents are processed for text extraction and OCR.
+        </Typography>
+        
+        {loadingSettings ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <CircularProgress size={20} />
+            <Typography variant="body2">Loading settings...</Typography>
+          </Box>
+        ) : (
+          <>
+            <Grid container spacing={3} alignItems="center">
+              <Grid item xs={12} sm={6} md={4}>
+                <TextField
+                  label="OCR Word Count Threshold"
+                  type="number"
+                  value={ocrThreshold}
+                  onChange={(e) => setOcrThreshold(Math.max(1, parseInt(e.target.value) || 200))}
+                  inputProps={{ min: 1, max: 999 }}
+                  fullWidth
+                  helperText="PDFs with fewer words will use OCR processing"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={8}>
+                <Typography variant="body2" color="text.secondary">
+                  When a PDF contains fewer than this number of words, AWS Textract OCR will be used for text extraction. 
+                  Higher values may improve accuracy for image-heavy PDFs but will increase processing costs.
+                </Typography>
+              </Grid>
+            </Grid>
+            
+            <Box sx={{ mt: 3 }}>
+              <Button
+                variant="contained"
+                onClick={saveSettings}
+                disabled={savingSettings}
+                sx={{ mr: 2 }}
+              >
+                {savingSettings ? <CircularProgress size={24} /> : 'Save Settings'}
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={loadSettings}
+                disabled={loadingSettings || savingSettings}
+              >
+                Reset to Saved
+              </Button>
+            </Box>
+          </>
+        )}
+      </Paper>
 
       {/* Database & Storage Management - Admin Only */}
       {adminRole.isAdmin && (

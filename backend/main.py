@@ -1587,6 +1587,72 @@ async def get_system_analytics(
             detail=f"Failed to get system analytics: {str(e)}"
         )
 
+# Settings Management Endpoints
+@app.get("/settings/ocr-threshold")
+async def get_ocr_threshold(current_user: dict = Depends(get_current_user)):
+    """Get the OCR word count threshold for the current environment"""
+    try:
+        environment = os.getenv('ENVIRONMENT', 'dev').lower()
+        parameter_name = f'/agent2-ingestor/{environment}/ocr-threshold'
+        
+        # Get parameter from AWS Systems Manager Parameter Store
+        ssm = boto3.client('ssm', region_name='us-east-1')
+        
+        try:
+            response = ssm.get_parameter(Name=parameter_name)
+            threshold = int(response['Parameter']['Value'])
+        except ssm.exceptions.ParameterNotFound:
+            # Return default value if parameter doesn't exist
+            threshold = 200
+        
+        return {"threshold": threshold}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get OCR threshold: {str(e)}"
+        )
+
+@app.post("/settings/ocr-threshold")
+async def set_ocr_threshold(
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Set the OCR word count threshold for the current environment"""
+    try:
+        threshold = request.get('threshold', 200)
+        
+        # Validate threshold value
+        if not isinstance(threshold, int) or threshold < 1 or threshold > 999:
+            raise HTTPException(
+                status_code=400,
+                detail="Threshold must be an integer between 1 and 999"
+            )
+        
+        environment = os.getenv('ENVIRONMENT', 'dev').lower()
+        parameter_name = f'/agent2-ingestor/{environment}/ocr-threshold'
+        
+        # Save parameter to AWS Systems Manager Parameter Store
+        ssm = boto3.client('ssm', region_name='us-east-1')
+        
+        ssm.put_parameter(
+            Name=parameter_name,
+            Value=str(threshold),
+            Type='String',
+            Overwrite=True,
+            Description=f'OCR word count threshold for {environment} environment'
+        )
+        
+        return {"message": "OCR threshold saved successfully", "threshold": threshold}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save OCR threshold: {str(e)}"
+        )
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

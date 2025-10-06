@@ -604,7 +604,9 @@ class DynamoDBService:
             for page in paginator.paginate():
                 for table_name in page['TableNames']:
                     # Check if table belongs to this environment
-                    if f'-{environment}-' in table_name or table_name.endswith(f'-{environment}'):
+                    # Look for agent2_ingestor tables with environment suffix
+                    if ('agent2' in table_name and 'ingestor' in table_name and 
+                        table_name.endswith(f'_{environment}')):
                         # Scan and delete all items in the table
                         table = self.dynamodb.Table(table_name)
                         
