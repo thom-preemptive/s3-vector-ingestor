@@ -52,6 +52,9 @@ interface Document {
   markdown_s3_key: string;
   sidecar_s3_key: string;
   match_field?: string;
+  processing_method?: string;
+  used_ocr?: boolean;
+  ocr_threshold_used?: number;
 }
 
 interface DocumentStats {
@@ -269,6 +272,47 @@ const DocumentsPage: React.FC = () => {
       width: 70,
       sortable: false,
       renderCell: (params) => getSourceIcon(params.row.source_type),
+    },
+    {
+      field: 'processing_method',
+      headerName: 'Processing',
+      width: 120,
+      sortable: false,
+      renderCell: (params) => {
+        const method = params.row.processing_method;
+        const usedOcr = params.row.used_ocr;
+        
+        if (!method) return null;
+        
+        let color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' = 'default';
+        let label = method;
+        
+        if (usedOcr) {
+          if (method.includes('Advanced')) {
+            color = 'success';
+            label = 'OCR+';
+          } else if (method.includes('Basic')) {
+            color = 'warning';
+            label = 'OCR';
+          } else if (method.includes('Failed')) {
+            color = 'error';
+            label = 'Text Only';
+          }
+        } else {
+          color = 'info';
+          label = 'Text';
+        }
+        
+        return (
+          <Chip
+            label={label}
+            size="small"
+            color={color}
+            variant={usedOcr ? 'filled' : 'outlined'}
+            title={`Processing Method: ${method}${params.row.ocr_threshold_used ? ` (Threshold: ${params.row.ocr_threshold_used} words)` : ''}`}
+          />
+        );
+      },
     },
     {
       field: 'job_name',
