@@ -184,7 +184,7 @@ const SettingsPage: React.FC = () => {
           PDF Ingestion
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Configure how PDF documents are processed for text extraction and OCR.
+          <strong>Upper limit of 10,000.</strong> Configure how PDF documents are processed for text extraction and OCR.
         </Typography>
         
         {loadingSettings ? (
@@ -194,7 +194,7 @@ const SettingsPage: React.FC = () => {
           </Box>
         ) : (
           <>
-            <Grid container spacing={3} alignItems="center">
+            <Grid container spacing={3} alignItems="flex-start">
               <Grid item xs={12} sm={6} md={4}>
                 <TextField
                   label="OCR Word Count Threshold"
@@ -206,7 +206,7 @@ const SettingsPage: React.FC = () => {
                   helperText="PDFs with fewer words will use OCR processing (1-10,000)"
                 />
               </Grid>
-              <Grid item xs={12} sm={6} md={8}>
+              <Grid item xs={12} sm={6} md={8} sx={{ pt: 1 }}>
                 <Typography variant="body2" color="text.secondary">
                   When a PDF contains fewer than this number of words, AWS Textract OCR will be used for text extraction. 
                   Higher values may improve accuracy for image-heavy PDFs but will increase processing costs.
