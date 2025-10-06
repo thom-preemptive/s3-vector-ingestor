@@ -1,5 +1,3 @@
-# User Guide
-
 Welcome to S3 Vector Store Ingestor, a cloud-ready document processing platform that converts PDFs and web content into AI-ready markdown and vector embeddings.
 
 ## Overview
