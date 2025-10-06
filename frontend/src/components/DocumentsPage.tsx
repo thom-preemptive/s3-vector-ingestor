@@ -292,7 +292,19 @@ const DocumentsPage: React.FC = () => {
         const method = params.row.processing_method;
         const usedOcr = params.row.used_ocr;
         
-        if (!method) return null;
+        // Handle missing processing method data for legacy documents
+        if (!method) {
+          return (
+            <Tooltip title="Processing method not available (legacy document)" placement="top">
+              <Chip
+                label="Legacy"
+                size="small"
+                color="default"
+                variant="outlined"
+              />
+            </Tooltip>
+          );
+        }
         
         let color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' = 'default';
         let label = method;
